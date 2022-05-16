@@ -20,8 +20,8 @@ type balanceResponse struct {
 	Balance string `json:"balance"`
 }
 
-func ExportAnchorDeposit(ctx types.Context, ms types.CommitMultiStore, height int64, q wasmtypes.QueryServer) (map[string]string, error) {
-	newCtx := types.WrapSDKContext(ctx.WithMultiStore(ms))
+func ExportAnchorDeposit(ctx types.Context, height int64, q wasmtypes.QueryServer) (map[string]string, error) {
+	newCtx := types.WrapSDKContext(ctx)
 	logger := ctx.Logger()
 
 	// scan through aUST holders, append them to accounts

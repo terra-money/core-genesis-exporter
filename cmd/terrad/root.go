@@ -266,12 +266,15 @@ func (a appCreator) appExport(
 	}
 
 	// handle contract exports here
-	snapshotMs := store.NewCommitMultiStore(db)
-	snapshotMs.LoadVersion(6000000)
+
+	terraApp.LoadHeight(6000000)
+	//snapshotMs := store.NewCommitMultiStore(db)
+	//snapshotMs.
+	//snapshotMs.LoadVersion(6000000)
 
 	ctx := terraApp.NewContext(true, tmproto.Header{Height: terraApp.LastBlockHeight()})
 
-	terraapp.ExportAnchorDeposit(ctx, snapshotMs, 6000000, wasmkeeper.NewQuerier(terraApp.WasmKeeper))
+	terraapp.ExportAnchorDeposit(ctx, 6000000, wasmkeeper.NewQuerier(terraApp.WasmKeeper))
 
 	return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }
