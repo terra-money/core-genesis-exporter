@@ -34,7 +34,7 @@ func (app *TerraApp) ExportAppStateAndValidators(
 
 	// wasm stuff
 	wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
-	exportAnchor(ctx, wasmQuerier)
+	exportAnchor(ctx, height, wasmQuerier)
 
 	genState := app.mm.ExportGenesis(ctx, app.appCodec)
 	appState, err := json.MarshalIndent(genState, "", "  ")
