@@ -2,6 +2,8 @@ package main
 
 import (
 	"errors"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	"io"
 	"os"
 	"path/filepath"
@@ -262,6 +264,14 @@ func (a appCreator) appExport(
 	} else {
 		terraApp = terraapp.NewTerraApp(logger, db, traceStore, true, map[int64]bool{}, homePath, cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)), a.encodingConfig, appOpts, wasmconfig.DefaultConfig())
 	}
+
+	// handle contract exports here
+	snapshotMs := store.NewCommitMultiStore(db)
+	snapshotMs.LoadVersion(6000000)
+
+	ctx := terraApp.NewContext(true, tmproto.Header{Height: terraApp.LastBlockHeight()})
+
+	terraapp.ExportAnchorDeposit(ctx, snapshotMs, 6000000, wasmkeeper.NewQuerier(terraApp.WasmKeeper))
 
 	return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }

@@ -20,14 +20,17 @@ type balanceResponse struct {
 	Balance string `json:"balance"`
 }
 
-func exportAnchor(ctx types.Context, height int64, q wasmtypes.QueryServer) (map[string]string, error) {
-	newCtx := ctx.WithBlockHeight(height).Context()
+func ExportAnchorDeposit(ctx types.Context, ms types.CommitMultiStore, height int64, q wasmtypes.QueryServer) (map[string]string, error) {
+	newCtx := types.WrapSDKContext(ctx.WithMultiStore(ms))
+	logger := ctx.Logger()
 
 	// scan through aUST holders, append them to accounts
 	var allAccounts allAccountsResponse
 	var accounts []string
 	var balances = make(map[string]string)
 	var getAnchorUSTAccounts func(lastAccount string) error
+	logger.Info("fetching aUST holders...")
+
 	getAnchorUSTAccounts = func(lastAccount string) error {
 		// get aUST balance
 		response, err := q.ContractStore(newCtx, &wasmtypes.QueryContractStoreRequest{
@@ -60,6 +63,7 @@ func exportAnchor(ctx types.Context, height int64, q wasmtypes.QueryServer) (map
 	// now accounts slice is filled, get actual balances
 	var balance balanceResponse
 	var getAnchorUSTBalance func(account string) error
+	logger.Info("fetching aUST balances...")
 	getAnchorUSTBalance = func(account string) error {
 		response, err := q.ContractStore(newCtx, &wasmtypes.QueryContractStoreRequest{
 			ContractAddress: aUST,
@@ -90,6 +94,7 @@ func exportAnchor(ctx types.Context, height int64, q wasmtypes.QueryServer) (map
 	var epochStateResponse struct {
 		ExchangeRate string `json:"exchange_rate"`
 	}
+	logger.Info("fetching aUST<>UST exchange rate...")
 	response, err := q.ContractStore(newCtx, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: moneyMarketContract,
 		QueryMsg:        getExchangeRate(height),
@@ -115,8 +120,10 @@ func exportAnchor(ctx types.Context, height int64, q wasmtypes.QueryServer) (map
 			panic("anchor exchange rate cannot be converted to Dec")
 		}
 
-		balances[address] = balanceInInt.Mul(erInDec).String()
+		balances[address] = balanceInInt.Mul(erInDec).TruncateInt().String()
 	}
+
+	logger.Info("--- %d holders", len(balances))
 
 	return balances, nil
 }

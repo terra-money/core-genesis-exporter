@@ -2,7 +2,6 @@ package app
 
 import (
 	"encoding/json"
-	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	"log"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -33,8 +32,8 @@ func (app *TerraApp) ExportAppStateAndValidators(
 	}
 
 	// wasm stuff
-	wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
-	exportAnchor(ctx, height, wasmQuerier)
+	//wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
+	//exportAnchorDeposit(ctx, height, wasmQuerier)
 
 	genState := app.mm.ExportGenesis(ctx, app.appCodec)
 	appState, err := json.MarshalIndent(genState, "", "  ")
