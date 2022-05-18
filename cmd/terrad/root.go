@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	"io"
 	"os"
@@ -267,14 +266,13 @@ func (a appCreator) appExport(
 
 	// handle contract exports here
 
-	terraApp.LoadHeight(6000000)
-	//snapshotMs := store.NewCommitMultiStore(db)
-	//snapshotMs.
-	//snapshotMs.LoadVersion(6000000)
+	// first for pre-attack height
+	snapshotTerraApp := terraapp.NewTerraApp(logger, db, traceStore, false, map[int64]bool{}, homePath, cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)), a.encodingConfig, appOpts, wasmconfig.DefaultConfig())
+	snapshotTerraApp.LoadVersion(6000000)
 
-	ctx := terraApp.NewContext(true, tmproto.Header{Height: terraApp.LastBlockHeight()})
+	// second for "launch" height
 
-	terraapp.ExportAnchorDeposit(ctx, 6000000, wasmkeeper.NewQuerier(terraApp.WasmKeeper))
+	terraapp.ExportAnchorDeposit(snapshotTerraApp, wasmkeeper.NewQuerier(snapshotTerraApp.WasmKeeper))
 
 	return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }

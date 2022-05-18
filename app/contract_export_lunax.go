@@ -6,23 +6,23 @@ import (
 )
 
 var (
-	bLuna    = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
-	bLunaHub = "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts"
+	lunaX      = "terra17y9qkl8dfkeg4py7n0g5407emqnemc3yqk5rup"
+	lunaXState = "terra1xacqx447msqp46qmv8k2sq6v5jh9fdj37az898"
 )
 
 // ExportbLUNA get bLUNA balance for all accounts, multiply ER
-func ExportbLUNA(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+func ExportLunaX(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
 	ctx := prepCtx(app)
 	logger := app.Logger()
 
 	var balances = make(map[string]sdk.Int)
-	logger.Info("fetching bLUNA holders and balances...")
+	logger.Info("fetching LunaX holders and balances...")
 
 	if err := getCW20AccountsAndBalances(ctx, balances, bLuna, q); err != nil {
 		return nil, err
 	}
 
-	// get bLUNA <> LUNA ER
+	// get LunaX <> Luna ER
 	var bLunaHubState struct {
 		ExchangeRate sdk.Dec `json:"exchange_rate"`
 	}
