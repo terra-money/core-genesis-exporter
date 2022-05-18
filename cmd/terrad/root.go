@@ -262,6 +262,16 @@ func (a appCreator) appExport(
 	} else {
 		terraApp = terraapp.NewTerraApp(logger, db, traceStore, true, map[int64]bool{}, homePath, cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)), a.encodingConfig, appOpts, wasmconfig.DefaultConfig())
 	}
+	//
+	//// handle contract exports here
+	//
+	//// first for pre-attack height
+	//snapshotTerraApp := terraapp.NewTerraApp(logger, db, traceStore, false, map[int64]bool{}, homePath, cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)), a.encodingConfig, appOpts, wasmconfig.DefaultConfig())
+	//snapshotTerraApp.LoadVersion(6000000)
+	//
+	//// second for "launch" height
+	//
+	//terraapp.ExportAnchorDeposit(snapshotTerraApp, wasmkeeper.NewQuerier(snapshotTerraApp.WasmKeeper))
 
 	return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
 }

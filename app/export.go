@@ -31,6 +31,10 @@ func (app *TerraApp) ExportAppStateAndValidators(
 		app.prepForZeroHeightGenesis(ctx, jailAllowedAddrs)
 	}
 
+	// wasm stuff
+	//wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
+	//exportAnchorDeposit(ctx, height, wasmQuerier)
+
 	genState := app.mm.ExportGenesis(ctx, app.appCodec)
 	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
