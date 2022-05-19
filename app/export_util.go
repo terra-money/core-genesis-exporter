@@ -2,7 +2,9 @@ package app
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/json"
+
 	"github.com/cosmos/cosmos-sdk/store"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -114,4 +116,25 @@ func contractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 // available from within the contract itself (i.e. LP stakers list from staking contract)
 func calculateIteratorStartKey(store store.KVStore, ctx context.Context, q wasmtypes.QueryServer, contractAddress string, prefix []byte) ([]byte, error) {
 	return nil, nil
+}
+
+func generatePrefix(keys ...string) []byte {
+	var prefix []byte
+	for _, key := range keys {
+		prefix = append(prefix, encodeLength(key)...)
+		prefix = append(prefix, []byte(key)...)
+	}
+
+	return prefix
+}
+
+/// Encodes the length of a given namespace as a 2 byte big endian encoded integer
+func encodeLength(key string) []byte {
+	b := toByteArray(len(key))
+	return []byte{b[2], b[3]}
+}
+
+func toByteArray(i int) (arr [4]byte) {
+	binary.BigEndian.PutUint32(arr[0:4], uint32(i))
+	return arr
 }

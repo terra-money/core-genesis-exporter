@@ -184,6 +184,35 @@ func (k Keeper) IterateContractInfo(ctx sdk.Context, cb func(types.ContractInfo)
 	}
 }
 
+// IterateContractState iterates through all elements of the key value store for the given contract address and passes
+// them to the provided callback function. The callback method can return true to abort early.
+func (k Keeper) IterateContractState(ctx sdk.Context, contractAddress sdk.AccAddress, cb func(key, value []byte) bool) {
+	prefixStoreKey := types.GetContractStoreKey(contractAddress)
+	prefixStore := prefix.NewStore(ctx.KVStore(k.storeKey), prefixStoreKey)
+	iter := prefixStore.Iterator(nil, nil)
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		if cb(iter.Key(), iter.Value()) {
+			break
+		}
+	}
+}
+
+func (k Keeper) IterateContractStateWithPrefix(ctx sdk.Context, contractAddress sdk.AccAddress, dataPrefix []byte, cb func(key, value []byte) bool) {
+	prefixStoreKey := types.GetContractStoreKey(contractAddress)
+	prefixStoreKey = append(prefixStoreKey, dataPrefix...)
+	prefixStore := prefix.NewStore(ctx.KVStore(k.storeKey), prefixStoreKey)
+	iter := prefixStore.Iterator(nil, nil)
+	defer iter.Close()
+
+	for ; iter.Valid(); iter.Next() {
+		if cb(iter.Key(), iter.Value()) {
+			break
+		}
+	}
+}
+
 // GetContractStoreIterator returns iterator for a contract store
 func (k Keeper) GetContractStoreIterator(ctx sdk.Context, contractAddress sdk.AccAddress) sdk.Iterator {
 	prefixStoreKey := types.GetContractStoreKey(contractAddress)
