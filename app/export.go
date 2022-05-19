@@ -2,6 +2,8 @@ package app
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -14,6 +16,34 @@ import (
 
 	oracletypes "github.com/terra-money/core/x/oracle/types"
 )
+
+func (app *TerraApp) TestExportAllStore() (servertypes.ExportedApp, error) {
+	// wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
+	// ExportApolloVaultLPs(app, wasmQuerier)
+	ctx := app.NewContext(true, tmproto.Header{Height: app.LastBlockHeight()})
+	// contractAddr, err := sdk.AccAddressFromBech32("terra1egstlx9c9pq5taja5sg0yhraa0cl5laxyvm3ln")
+	// contractAddr, err := sdk.AccAddressFromBech32("terra186j0zamfdvsdzlwd5j84gqaz60tgj6hy0yfucn")
+	contractAddr, err := sdk.AccAddressFromBech32("terra1g7jjjkt5uvkjeyhp8ecdz4e4hvtn83sud3tmh2") // apollo factory
+	if err != nil {
+		return servertypes.ExportedApp{}, err
+	}
+	fmt.Printf("%s\n", contractAddr)
+	// app.WasmKeeper.IterateContractState(ctx, contractAddr, func(key, value []byte) bool {
+	// 	prefix := generatePrefix("rewards")
+	// 	prefix2 := generatePrefix("lm_rewards")
+	// 	if len(key) > 10 && !bytes.Equal(key[:len(prefix)], prefix) && !bytes.Equal(key[:len(prefix2)], prefix2) {
+	// 		fmt.Printf("%x, %s", key, value)
+	// 	}
+	// 	return false
+	// })
+	prefix := generatePrefix("strategies")
+	app.WasmKeeper.IterateContractStateWithPrefix(ctx, contractAddr, prefix, func(key, value []byte) bool {
+		fmt.Printf("%x, %s\n", key, value)
+		return false
+	})
+
+	return servertypes.ExportedApp{}, errors.New("nothing")
+}
 
 // ExportAppStateAndValidators exports the state of the application for a genesis
 // file.
