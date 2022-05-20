@@ -15,7 +15,7 @@ var (
 // then
 func ExportTerraswapLiquidity(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
 	ctx := prepCtx(app)
-	logger := app.Logger()
+	// logger := app.Logger()
 
 	// get all pairs from factory
 	var pairsResponse struct {
@@ -39,5 +39,5 @@ func ExportTerraswapLiquidity(app *TerraApp, q wasmtypes.QueryServer) (map[strin
 	}, &pairsResponse); err != nil {
 		return nil, err
 	}
-
+	return nil, nil
 }

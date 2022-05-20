@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 
 	"github.com/cosmos/cosmos-sdk/store"
+	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
@@ -26,6 +27,8 @@ type balance struct {
 	Denom   string       `json:"denom"`
 	Balance sdktypes.Int `json:"balance"`
 }
+
+type lpHoldings map[string]types.Int // {wallet: amount}
 
 func prepCtx(app *TerraApp) context.Context {
 	height := app.LastBlockHeight()

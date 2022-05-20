@@ -36,8 +36,6 @@ type UserInfo struct {
 	Shares types.Int `json:"shares"`
 }
 
-type LpHoldings map[string]types.Int // {wallet: amount}
-
 // Exports all LP ownership from Apollo vaults
 // Resulting map is in the following format
 // {
@@ -45,7 +43,7 @@ type LpHoldings map[string]types.Int // {wallet: amount}
 //       "wallet_address": "amount",
 //   },
 // }
-func ExportApolloVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]LpHoldings, error) {
+func ExportApolloVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]lpHoldings, error) {
 	ctx := prepCtx(app)
 	strats, err := getListOfStrategies(ctx, app.WasmKeeper)
 	if err != nil {
@@ -53,7 +51,7 @@ func ExportApolloVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]Lp
 	}
 	// log.Printf("no. of apollo strats: %d\n", len(strats))
 
-	allLpHoldings := make(map[string]LpHoldings)
+	allLpHoldings := make(map[string]lpHoldings)
 	for _, strat := range strats {
 		lpHoldings, lpTokenAddr, err := getLpHoldingsForStrat(ctx, app.WasmKeeper, strat)
 		if err != nil {
@@ -64,28 +62,28 @@ func ExportApolloVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]Lp
 	return allLpHoldings, nil
 }
 
-func getLpHoldingsForStrat(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress) (LpHoldings, sdk.AccAddress, error) {
+func getLpHoldingsForStrat(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress) (lpHoldings, sdk.AccAddress, error) {
 	lpTokenAddr, _, err := getStrategyConfig(ctx, keeper, strategyAddr)
 	if err != nil {
-		return LpHoldings{}, lpTokenAddr, err
+		return lpHoldings{}, lpTokenAddr, err
 	}
 	// log.Printf("vault: %s, lp token: %s, lp pair: %s\n", strategyAddr, lpTokenAddr, tokenPair)
 	stratInfo, err := getStrategyInfo(ctx, keeper, strategyAddr)
 	if err != nil {
-		return LpHoldings{}, lpTokenAddr, err
+		return lpHoldings{}, lpTokenAddr, err
 	}
 	// log.Printf("%v\n", stratInfo)
-	lpHoldings, err := getUserLpHoldings(ctx, keeper, strategyAddr, stratInfo)
+	userLpHoldings, err := getUserLpHoldings(ctx, keeper, strategyAddr, stratInfo)
 	if err != nil {
-		return LpHoldings{}, lpTokenAddr, err
+		return lpHoldings{}, lpTokenAddr, err
 	}
-	log.Printf("len: %d", len(lpHoldings))
-	return lpHoldings, lpTokenAddr, nil
+	log.Printf("len: %d", len(userLpHoldings))
+	return userLpHoldings, lpTokenAddr, nil
 }
 
-func getUserLpHoldings(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress, stratInfo StrategyInfo) (LpHoldings, error) {
+func getUserLpHoldings(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress, stratInfo StrategyInfo) (lpHoldings, error) {
 	prefix := generatePrefix("user")
-	lpHoldings := make(LpHoldings)
+	lpHoldings := make(lpHoldings)
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), strategyAddr, prefix, func(key, value []byte) bool {
 		// fmt.Printf("%x, %s\n", key, value)
 		var userInfo UserInfo
