@@ -2,10 +2,12 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
 
 	"github.com/cosmos/cosmos-sdk/store"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -116,6 +118,14 @@ func contractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 // available from within the contract itself (i.e. LP stakers list from staking contract)
 func calculateIteratorStartKey(store store.KVStore, ctx context.Context, q wasmtypes.QueryServer, contractAddress string, prefix []byte) ([]byte, error) {
 	return nil, nil
+}
+
+func AccAddressFromBase64(s string) (sdk.AccAddress, error) {
+	addr, err := base64.StdEncoding.DecodeString(s)
+	if err != nil {
+		return sdk.AccAddress([]byte{}), err
+	}
+	return sdk.AccAddress(addr), nil
 }
 
 func generatePrefix(keys ...string) []byte {
