@@ -12,6 +12,7 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -34,6 +35,24 @@ func prepCtx(app *TerraApp) context.Context {
 	height := app.LastBlockHeight()
 	ctx := app.NewContext(true, tmproto.Header{Height: height})
 	return sdktypes.WrapSDKContext(ctx)
+}
+
+func getCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, contractAddress string, balanceMap map[string]sdktypes.Int) error {
+	prefix := generatePrefix("balance")
+	contractAddr, err := sdktypes.AccAddressFromBech32(contractAddress)
+	if err != nil {
+		return err
+	}
+	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), contractAddr, prefix, func(key, value []byte) bool {
+		// first and last byte is not used
+		balance, ok := sdktypes.NewIntFromString(string(value[1 : len(value)-1]))
+		// fmt.Printf("%s, %x, %s, %v\n", key, value, balance, ok)
+		if ok {
+			balanceMap[string(key)] = balance
+		}
+		return false
+	})
+	return nil
 }
 
 func getCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdktypes.Int, contractAddress string, q wasmtypes.QueryServer) error {
