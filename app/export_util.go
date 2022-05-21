@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/binary"
 	"encoding/json"
+	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/store"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -35,6 +36,34 @@ func prepCtx(app *TerraApp) context.Context {
 	height := app.LastBlockHeight()
 	ctx := app.NewContext(true, tmproto.Header{Height: height})
 	return sdktypes.WrapSDKContext(ctx)
+}
+
+func getCW20TotalSupply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string) (sdktypes.Int, error) {
+	var tokenInfo struct {
+		TotalSupply sdk.Int `json:"total_supply"`
+	}
+	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: cw20Addr,
+		QueryMsg:        []byte("{\"token_info\": {} }"),
+	}, &tokenInfo)
+	if err != nil {
+		return sdktypes.NewInt(0), err
+	}
+	return tokenInfo.TotalSupply, nil
+}
+
+func getCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holder string) (sdktypes.Int, error) {
+	var balance struct {
+		Balance sdk.Int `json:"balance"`
+	}
+	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: cw20Addr,
+		QueryMsg:        []byte(fmt.Sprintf("{\"balance\": {\"address\": \"%s\"}}", holder)),
+	}, &balance)
+	if err != nil {
+		return sdktypes.NewInt(0), err
+	}
+	return balance.Balance, nil
 }
 
 func getCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, contractAddress string, balanceMap map[string]sdktypes.Int) error {

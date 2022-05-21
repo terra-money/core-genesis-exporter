@@ -47,14 +47,8 @@ func ExportMarsDepositLuna(app *TerraApp, q wasmtypes.QueryServer) (map[string]s
 	}
 	coin := app.BankKeeper.GetBalance(sdk.UnwrapSDKContext(ctx), marsMarketAddr, "uluna")
 	fmt.Printf("total amount in bank: %v\n", coin)
-	var tokenInfo struct {
-		TotalSupply sdk.Int `json:"total_supply"`
-	}
-	contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: maLunaToken,
-		QueryMsg:        []byte("{\"token_info\": {} }"),
-	}, &tokenInfo)
-	fmt.Printf("total supply of maToken: %v\n", tokenInfo)
+	totalSupply, err := getCW20TotalSupply(ctx, q, maLunaToken)
+	fmt.Printf("total supply of maToken: %v\n", totalSupply)
 
 	sum := sdk.NewInt(0)
 	// balance * ER
@@ -62,7 +56,7 @@ func ExportMarsDepositLuna(app *TerraApp, q wasmtypes.QueryServer) (map[string]s
 		if balance.IsZero() {
 			continue
 		}
-		balances[address] = balance.Mul(coin.Amount).Quo(tokenInfo.TotalSupply)
+		balances[address] = balance.Mul(coin.Amount).Quo(totalSupply)
 		sum = sum.Add(balances[address])
 	}
 	// There is rounding error here. Should we assign this fairly or ignore it? (<1000 uluna)
