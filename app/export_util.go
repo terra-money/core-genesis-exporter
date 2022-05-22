@@ -17,6 +17,12 @@ import (
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
+var (
+	DenomAUST = "aUST"
+	DenomUST  = "uusd"
+	DenomLUNA = "uluna"
+)
+
 type allAccountsResponse struct {
 	Accounts []string `json:"accounts"`
 }
@@ -36,6 +42,16 @@ func prepCtx(app *TerraApp) context.Context {
 	height := app.LastBlockHeight()
 	ctx := app.NewContext(true, tmproto.Header{Height: height})
 	return sdktypes.WrapSDKContext(ctx)
+}
+
+func prepWasmQueryServer(app *TerraApp) wasmtypes.QueryServer {
+	return wasmkeeper.NewQuerier(app.WasmKeeper)
+}
+
+func mustUnmarshalTMJSON(bz []byte, dst interface{}) {
+	if err := tmjson.Unmarshal(bz, dst); err != nil {
+		panic(fmt.Sprintf("unable to unmarshal; got %v", bz))
+	}
 }
 
 func getCW20TotalSupply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string) (sdktypes.Int, error) {
@@ -61,7 +77,7 @@ func getCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr strin
 		QueryMsg:        []byte(fmt.Sprintf("{\"balance\": {\"address\": \"%s\"}}", holder)),
 	}, &balance)
 	if err != nil {
-		return sdktypes.NewInt(0), err
+		return sdktypes.ZeroInt(), err
 	}
 	return balance.Balance, nil
 }
