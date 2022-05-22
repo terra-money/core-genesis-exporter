@@ -97,7 +97,8 @@ func ExportMarsDepositUST(app *TerraApp, q wasmtypes.QueryServer) (map[string]sd
 // Get eventual ownership of LP tokens in the Field of Mars (leveraged yield farming) contracts
 // 1. Get the LP token contract addr
 // 2. List all positions recurrsively
-// 3. Create a holding map with format {"lp_token_addr": {"wallet_addr": "amount"}}
+// 3. Find how much LP tokens are deposited at the astroport generator
+// 4. Split the LP based on bond_unit and create a holding map with format {"lp_token_addr": {"wallet_addr": "amount"}}
 func ExportFieldOfMarsLpTokens(app *TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
 	ctx := prepCtx(app)
 	holdings := make(map[string]map[string]sdk.Int)
