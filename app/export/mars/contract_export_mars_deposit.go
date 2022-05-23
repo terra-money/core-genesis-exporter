@@ -47,8 +47,11 @@ func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer) (map[st
 	if err != nil {
 		return nil, err
 	}
-	coin := app.BankKeeper.GetBalance(sdk.UnwrapSDKContext(ctx), marsMarketAddr, "uluna")
-	fmt.Printf("total amount in bank: %v\n", coin)
+
+	marsLunaBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, string(marsMarketAddr))
+	if err != nil {
+		return nil, err
+	}
 	totalSupply, err := util.GetCW20TotalSupply(ctx, q, maLunaToken)
 	fmt.Printf("total supply of maToken: %v\n", totalSupply)
 
@@ -58,11 +61,11 @@ func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer) (map[st
 		if balance.IsZero() {
 			continue
 		}
-		balances[address] = balance.Mul(coin.Amount).Quo(totalSupply)
+		balances[address] = balance.Mul(marsLunaBalance).Quo(totalSupply)
 		sum = sum.Add(balances[address])
 	}
 	// There is rounding error here. Should we assign this fairly or ignore it? (<1000 uluna)
-	fmt.Printf("%s, %s, difference: %s\n", sum, coin.Amount, coin.Amount.Sub(sum))
+	fmt.Printf("%s, %s, difference: %s\n", sum, marsLunaBalance, marsLunaBalance.Sub(sum))
 	return balances, nil
 }
 

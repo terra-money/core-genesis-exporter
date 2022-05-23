@@ -38,6 +38,10 @@ type Balance struct {
 	Balance sdktypes.Int `json:"balance"`
 }
 
+func (b *Balance) AddInto(i sdktypes.Int) {
+	b.Balance = b.Balance.Add(i)	
+}
+
 type Blacklist map[string][]string
 
 func (bl Blacklist) RegisterAddress(denom string, address string) {
@@ -93,6 +97,15 @@ func GetCW20TotalSupply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr s
 		return sdktypes.NewInt(0), err
 	}
 	return tokenInfo.TotalSupply, nil
+}
+
+func GetNativeBalance(ctx context.Context, k wasmtypes.BankKeeper, denom string, account string) (sdk.Int, error) {
+	accountAddr, err := sdk.AccAddressFromBech32(account)
+	if err != nil {
+		return sdk.NewInt(0), err
+	}
+	coin := k.GetBalance(sdk.UnwrapSDKContext(ctx), accountAddr, denom)
+	return coin.Amount, nil
 }
 
 func GetCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holder string) (sdktypes.Int, error) {
@@ -241,4 +254,21 @@ func encodeLength(key string) []byte {
 func toByteArray(i int) (arr [4]byte) {
 	binary.BigEndian.PutUint32(arr[0:4], uint32(i))
 	return arr
+}
+
+func MergeMaps(m0 map[string]sdk.Int, ms ...map[string]sdk.Int) map[string]sdk.Int {
+	newMap := make(map[string]sdk.Int)
+	for k, v := range m0 {
+		newMap[k] = v
+	}
+	for _, m := range ms {
+		for k, v := range m {
+			if newMap[k].IsNil() {
+				newMap[k] = sdk.NewInt(0)
+			}
+			newMap[k] = newMap[k].Add(v)
+		}
+
+	}
+	return newMap
 }
