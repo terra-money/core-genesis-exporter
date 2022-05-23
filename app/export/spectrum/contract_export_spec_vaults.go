@@ -8,6 +8,8 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
@@ -89,9 +91,9 @@ type RewardInfo struct {
 //    a. For each holder, call contract query `reward_info` to find the bond_amount.
 //        i. For each pool, add the LP tokens to the resulting map
 // 3. Return list of LP ownship group by LP token address and wallet address
-func ExportSpecVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]lpHoldings, error) {
-	ctx := prepCtx(app)
-	holdings := make(map[string]lpHoldings)
+func ExportSpecVaultLPs(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
+	holdings := make(map[string]map[string]sdk.Int)
 	for _, farmAddrStr := range specFarms {
 		log.Printf("farm: %s\n", farmAddrStr)
 		farmAddr, err := sdk.AccAddressFromBech32(farmAddrStr)
@@ -114,7 +116,7 @@ func ExportSpecVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]lpHo
 }
 
 func getSpecFarmPools(ctx context.Context, keeper keeper.Keeper, q wasmtypes.QueryServer, farmAddr sdk.AccAddress) (map[string]PoolInfo, error) {
-	prefix := generatePrefix("pool_info")
+	prefix := util.GeneratePrefix("pool_info")
 	// var stratConfig StrategyConfig
 	pools := make(map[string]PoolInfo)
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), farmAddr, prefix, func(key, value []byte) bool {
@@ -125,7 +127,7 @@ func getSpecFarmPools(ctx context.Context, keeper keeper.Keeper, q wasmtypes.Que
 			panic(err)
 		}
 		tokenAddr := sdk.AccAddress(key).String()
-		lpTokenAddr, err := AccAddressFromBase64(pool.LpTokenAddr)
+		lpTokenAddr, err := util.AccAddressFromBase64(pool.LpTokenAddr)
 		if err != nil {
 			panic(err)
 		}
@@ -138,7 +140,7 @@ func getSpecFarmPools(ctx context.Context, keeper keeper.Keeper, q wasmtypes.Que
 
 func getRewardsInfo(ctx context.Context, q wasmtypes.QueryServer, farmAddr string, walletAddr string) (RewardInfo, error) {
 	var reward RewardInfo
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: farmAddr,
 		QueryMsg:        []byte(fmt.Sprintf("{\"reward_info\":{\"staker_addr\":\"%s\"}}", walletAddr)),
 	}, &reward)
@@ -155,12 +157,12 @@ func getSpecFarmRewards(
 	q wasmtypes.QueryServer,
 	farmAddr sdk.AccAddress,
 	poolInfo map[string]PoolInfo,
-	holdings map[string]lpHoldings,
+	holdings map[string]map[string]sdk.Int,
 ) error {
 
 	// Spec farm prefix format
 	// [len(reward)][reward][len(wallet)][wallet][tokenAddress|denom]
-	prefix := generatePrefix("reward")
+	prefix := util.GeneratePrefix("reward")
 	// userLpHoldings := make(map[string]lpHoldings)
 	walletSeen := make(map[string]bool)
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), farmAddr, prefix, func(key, value []byte) bool {
@@ -176,7 +178,7 @@ func getSpecFarmRewards(
 		for _, reward := range rewards.RewardInfo {
 			lpAddr := poolInfo[reward.TokenAddr].LpTokenAddr
 			if holdings[lpAddr] == nil {
-				holdings[lpAddr] = make(lpHoldings)
+				holdings[lpAddr] = make(map[string]sdk.Int)
 			}
 			holdings[lpAddr][walletAddress.String()] = reward.LpAmount
 		}

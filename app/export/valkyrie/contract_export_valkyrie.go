@@ -1,5 +1,10 @@
 package app
 
+import (
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
+)
+
 var (
 	PairVKRUSTAstroport = "terra15s2wgdeqhuc4gfg7sfjyaep5cch38mwtzmwqrx"
 	PairVKRUSTTerraswap = "terra1e59utusv5rspqsu8t37h5w887d9rdykljedxw0"
@@ -9,9 +14,9 @@ var (
 )
 
 // ExportValkyrie iterates over VKR-UST LP then extract UST portion
-func ExportValkyrie(app *TerraApp, b blacklist) (map[string]balance, error) {
-	b.RegisterAddress(PairVKRUSTAstroport, DenomUST)
-	b.RegisterAddress(PairVKRUSTTerraswap, DenomUST)
+func ExportValkyrie(app *terra.TerraApp, b util.Blacklist) (map[string]util.Balance, error) {
+	b.RegisterAddress(PairVKRUSTAstroport, util.DenomUST)
+	b.RegisterAddress(PairVKRUSTTerraswap, util.DenomUST)
 
 	// 1. Virtually unstake astroport LP, and add to provided LP
 

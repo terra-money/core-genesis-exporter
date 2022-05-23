@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -12,22 +14,22 @@ var (
 	whiteWhaleVault = "terra1ec3r2esp9cqekqqvn0wd6nwrjslnwxm7fh8egy"
 )
 
-func ExportWhiteWhaleVaults(app *TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
+func ExportWhiteWhaleVaults(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	vUstHoldings := make(map[string]sdk.Int)
-	err := getCW20AccountsAndBalances2(ctx, app.WasmKeeper, whiteWhaleVUST, vUstHoldings)
+	err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, whiteWhaleVUST, vUstHoldings)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("no. of holders: %d\n", len(vUstHoldings))
 
-	totalSupply, err := getCW20TotalSupply(ctx, q, whiteWhaleVUST)
+	totalSupply, err := util.GetCW20TotalSupply(ctx, q, whiteWhaleVUST)
 	if err != nil {
 		return nil, err
 	}
 	fmt.Printf("total supply: %s\n", totalSupply)
 
-	aUstBalance, err := getCW20Balance(ctx, q, whiteWhaleVUST, whiteWhaleVault)
+	aUstBalance, err := util.GetCW20Balance(ctx, q, whiteWhaleVUST, whiteWhaleVault)
 	if err != nil {
 		return nil, err
 	}
@@ -38,12 +40,12 @@ func ExportWhiteWhaleVaults(app *TerraApp, q wasmtypes.QueryServer) (map[string]
 		return nil, err
 	}
 
-	ustBalance := app.BankKeeper.GetBalance(sdk.UnwrapSDKContext(ctx), whiteWhaleVaultAddr, "uusd").Amount
+	ustBalance := app.BankKeeper.GetBalance(sdk.UnwrapSDKContext(ctx), whiteWhaleVaultAddr, util.DenomUST).Amount
 
 	holdings := make(map[string]map[string]sdk.Int)
 	for wallet, holding := range vUstHoldings {
-		holdings["uust"][wallet] = holding.Mod(ustBalance).Quo(totalSupply)
-		holdings[aUST][wallet] = holding.Mod(aUstBalance).Quo(totalSupply)
+		holdings[util.DenomUST][wallet] = holding.Mod(ustBalance).Quo(totalSupply)
+		holdings[util.AUST][wallet] = holding.Mod(aUstBalance).Quo(totalSupply)
 	}
 	return holdings, nil
 }

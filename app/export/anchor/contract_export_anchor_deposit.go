@@ -1,21 +1,19 @@
-package app
+package anchor
 
 import (
 	"encoding/json"
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/types"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	"github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
-var (
-	moneyMarketContract = "terra1sepfj7s0aeg5967uxnfk4thzlerrsktkpelm5s"
-	aUST                = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
-)
-
-func ExportAnchorDeposit(app *TerraApp, q wasmtypes.QueryServer) (map[string]types.Int, error) {
-	height := app.LastBlockHeight()
-	ctx := app.NewContext(true, tmproto.Header{Height: height})
+func ExportAnchorDeposit(terra *app.TerraApp, q wasmtypes.QueryServer) (map[string]types.Int, error) {
+	height := terra.LastBlockHeight()
+	ctx := terra.NewContext(true, tmproto.Header{Height: height})
 	newCtx := types.WrapSDKContext(ctx)
 	logger := ctx.Logger()
 
@@ -23,7 +21,7 @@ func ExportAnchorDeposit(app *TerraApp, q wasmtypes.QueryServer) (map[string]typ
 	var balances = make(map[string]types.Int)
 	logger.Info("fetching aUST holders...")
 
-	if err := getCW20AccountsAndBalances(newCtx, balances, aUST, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances(newCtx, balances, AUST, q); err != nil {
 		return nil, err
 	}
 
@@ -32,8 +30,8 @@ func ExportAnchorDeposit(app *TerraApp, q wasmtypes.QueryServer) (map[string]typ
 		ExchangeRate string `json:"exchange_rate"`
 	}
 	logger.Info("fetching aUST<>UST exchange rate...")
-	if err := contractQuery(newCtx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: moneyMarketContract,
+	if err := util.ContractQuery(newCtx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: MoneyMarketContract,
 		QueryMsg:        getExchangeRate(height),
 	}, &epochStateResponse); err != nil {
 		return nil, err
@@ -53,18 +51,6 @@ func ExportAnchorDeposit(app *TerraApp, q wasmtypes.QueryServer) (map[string]typ
 	logger.Info("--- %d holders", len(balances))
 
 	return balances, nil
-}
-
-func getAllBalancesQuery(lastAccount string) json.RawMessage {
-	if lastAccount == "" {
-		return []byte(fmt.Sprintf("{\"all_accounts\":{\"limit\":30}}"))
-	} else {
-		return []byte(fmt.Sprintf("{\"all_accounts\":{\"limit\":30,\"start_after\":\"%s\"}}", lastAccount))
-	}
-}
-
-func getBalance(account string) json.RawMessage {
-	return []byte(fmt.Sprintf("{\"balance\":{\"address\":\"%s\"}}", account))
 }
 
 func getExchangeRate(height int64) json.RawMessage {

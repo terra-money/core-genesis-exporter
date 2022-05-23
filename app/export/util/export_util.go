@@ -1,4 +1,4 @@
-package app
+package util
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	terra "github.com/terra-money/core/app"
 	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
@@ -21,6 +22,7 @@ var (
 	DenomAUST = "aUST"
 	DenomUST  = "uusd"
 	DenomLUNA = "uluna"
+	AUST      = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
 
 type allAccountsResponse struct {
@@ -31,12 +33,19 @@ type balanceResponse struct {
 	Balance sdktypes.Int `json:"balance"`
 }
 
-type balance struct {
+type Balance struct {
 	Denom   string       `json:"denom"`
 	Balance sdktypes.Int `json:"balance"`
 }
 
+type Blacklist map[string][]string
+
+func (bl Blacklist) RegisterAddress(denom string, address string) {
+	bl[denom] = append(bl[denom], address)
+}
+
 type Snapshot string
+
 const (
 	PreAttack  string = "preattack"
 	PostAttack string = "preattack"
@@ -44,27 +53,39 @@ const (
 
 type lpHoldings map[string]types.Int // {wallet: amount}
 
-func prepCtx(app *TerraApp) context.Context {
+func GetAllBalancesQuery(lastAccount string) json.RawMessage {
+	if lastAccount == "" {
+		return []byte(fmt.Sprintf("{\"all_accounts\":{\"limit\":30}}"))
+	} else {
+		return []byte(fmt.Sprintf("{\"all_accounts\":{\"limit\":30,\"start_after\":\"%s\"}}", lastAccount))
+	}
+}
+
+func GetBalance(account string) json.RawMessage {
+	return []byte(fmt.Sprintf("{\"balance\":{\"address\":\"%s\"}}", account))
+}
+
+func PrepCtx(app *terra.TerraApp) context.Context {
 	height := app.LastBlockHeight()
 	ctx := app.NewContext(true, tmproto.Header{Height: height})
 	return sdktypes.WrapSDKContext(ctx)
 }
 
-func prepWasmQueryServer(app *TerraApp) wasmtypes.QueryServer {
+func PrepWasmQueryServer(app *terra.TerraApp) wasmtypes.QueryServer {
 	return wasmkeeper.NewQuerier(app.WasmKeeper)
 }
 
-func mustUnmarshalTMJSON(bz []byte, dst interface{}) {
+func MustUnmarshalTMJSON(bz []byte, dst interface{}) {
 	if err := tmjson.Unmarshal(bz, dst); err != nil {
 		panic(fmt.Sprintf("unable to unmarshal; got %v", bz))
 	}
 }
 
-func getCW20TotalSupply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string) (sdktypes.Int, error) {
+func GetCW20TotalSupply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string) (sdktypes.Int, error) {
 	var tokenInfo struct {
 		TotalSupply sdk.Int `json:"total_supply"`
 	}
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: cw20Addr,
 		QueryMsg:        []byte("{\"token_info\": {} }"),
 	}, &tokenInfo)
@@ -74,11 +95,11 @@ func getCW20TotalSupply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr s
 	return tokenInfo.TotalSupply, nil
 }
 
-func getCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holder string) (sdktypes.Int, error) {
+func GetCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holder string) (sdktypes.Int, error) {
 	var balance struct {
 		Balance sdk.Int `json:"balance"`
 	}
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: cw20Addr,
 		QueryMsg:        []byte(fmt.Sprintf("{\"balance\": {\"address\": \"%s\"}}", holder)),
 	}, &balance)
@@ -88,8 +109,8 @@ func getCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr strin
 	return balance.Balance, nil
 }
 
-func getCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, contractAddress string, balanceMap map[string]sdktypes.Int) error {
-	prefix := generatePrefix("balance")
+func GetCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, contractAddress string, balanceMap map[string]sdktypes.Int) error {
+	prefix := GeneratePrefix("balance")
 	contractAddr, err := sdktypes.AccAddressFromBech32(contractAddress)
 	if err != nil {
 		return err
@@ -106,7 +127,7 @@ func getCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, 
 	return nil
 }
 
-func getCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdktypes.Int, contractAddress string, q wasmtypes.QueryServer) error {
+func GetCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdktypes.Int, contractAddress string, q wasmtypes.QueryServer) error {
 	var allAccounts allAccountsResponse
 	var accounts []string
 
@@ -116,7 +137,7 @@ func getCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdkty
 		// lcd.terra.dev/wasm/contracts/terra1..../store?query_msg={"balance":{"address":"terra1...."}}
 		response, err := q.ContractStore(ctx, &wasmtypes.QueryContractStoreRequest{
 			ContractAddress: contractAddress,
-			QueryMsg:        getAllBalancesQuery(lastAccount),
+			QueryMsg:        GetAllBalancesQuery(lastAccount),
 		})
 
 		if err != nil {
@@ -146,8 +167,8 @@ func getCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdkty
 	var getAnchorUSTBalance func(account string) error
 	getAnchorUSTBalance = func(account string) error {
 		response, err := q.ContractStore(ctx, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: aUST,
-			QueryMsg:        getBalance(account),
+			ContractAddress: AUST,
+			QueryMsg:        GetBalance(account),
 		})
 
 		if err != nil {
@@ -173,7 +194,7 @@ func getCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdkty
 	return nil
 }
 
-func contractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.QueryContractStoreRequest, res interface{}) error {
+func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.QueryContractStoreRequest, res interface{}) error {
 	response, err := q.ContractStore(ctx, req)
 	if err != nil {
 		return err
@@ -201,7 +222,7 @@ func AccAddressFromBase64(s string) (sdk.AccAddress, error) {
 	return sdk.AccAddress(addr), nil
 }
 
-func generatePrefix(keys ...string) []byte {
+func GeneratePrefix(keys ...string) []byte {
 	var prefix []byte
 	for _, key := range keys {
 		prefix = append(prefix, encodeLength(key)...)

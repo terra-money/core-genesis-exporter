@@ -5,6 +5,8 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -31,14 +33,14 @@ var (
 // 2. Find total supply of maTokens
 // 3. Find balance of assets in bank
 // 4. Assign accounts with assets proportionally
-func ExportMarsDepositLuna(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
+func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
 	var balances = make(map[string]sdk.Int)
 	logger.Info("fetching MARS liquidity (LUNA)...")
 
-	if err := getCW20AccountsAndBalances2(ctx, app.WasmKeeper, maLunaToken, balances); err != nil {
+	if err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, maLunaToken, balances); err != nil {
 		return nil, err
 	}
 	marsMarketAddr, err := sdk.AccAddressFromBech32(marsMarket)
@@ -47,7 +49,7 @@ func ExportMarsDepositLuna(app *TerraApp, q wasmtypes.QueryServer) (map[string]s
 	}
 	coin := app.BankKeeper.GetBalance(sdk.UnwrapSDKContext(ctx), marsMarketAddr, "uluna")
 	fmt.Printf("total amount in bank: %v\n", coin)
-	totalSupply, err := getCW20TotalSupply(ctx, q, maLunaToken)
+	totalSupply, err := util.GetCW20TotalSupply(ctx, q, maLunaToken)
 	fmt.Printf("total supply of maToken: %v\n", totalSupply)
 
 	sum := sdk.NewInt(0)
@@ -64,14 +66,14 @@ func ExportMarsDepositLuna(app *TerraApp, q wasmtypes.QueryServer) (map[string]s
 	return balances, nil
 }
 
-func ExportMarsDepositUST(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
+func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
 	var balances = make(map[string]sdk.Int)
 	logger.Info("fetching MARS liquidity (UST)...")
 
-	if err := getCW20AccountsAndBalances(ctx, balances, marsUSTLiquidity, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, balances, marsUSTLiquidity, q); err != nil {
 		return nil, err
 	}
 
@@ -79,7 +81,7 @@ func ExportMarsDepositUST(app *TerraApp, q wasmtypes.QueryServer) (map[string]sd
 	var lunaMarketState struct {
 		LiquidityIndex sdk.Dec `json:"liquidity_index"`
 	}
-	if err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: marsMarket,
 		QueryMsg:        []byte("{\"market\": {\"asset\": {\"native\": {\"denom\": \"uusd\"}}}}"),
 	}, &lunaMarketState); err != nil {
@@ -99,8 +101,8 @@ func ExportMarsDepositUST(app *TerraApp, q wasmtypes.QueryServer) (map[string]sd
 // 2. List all positions recurrsively
 // 3. Find how much LP tokens are deposited at the astroport generator
 // 4. Split the LP based on bond_unit and create a holding map with format {"lp_token_addr": {"wallet_addr": "amount"}}
-func ExportFieldOfMarsLpTokens(app *TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
+func ExportFieldOfMarsLpTokens(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	holdings := make(map[string]map[string]sdk.Int)
 	lpTokenFieldMap := make(map[string]string)
 	for _, fieldContract := range marsFields {
@@ -135,7 +137,7 @@ func auditAstroportLpBalances(ctx context.Context, q wasmtypes.QueryServer, astr
 func getAstroportGeneratorDeposit(ctx context.Context, q wasmtypes.QueryServer, astroportGenerator string, lpToken string, user string) (sdk.Int, error) {
 	query := fmt.Sprintf("{\"deposit\": {\"user\": \"%s\", \"lp_token\": \"%s\"}}", user, lpToken)
 	var amount sdk.Int
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: astroportGenerator,
 		QueryMsg:        []byte(query),
 	}, &amount)
@@ -157,7 +159,7 @@ func getFieldOfMarsPositions(
 			LiquidityToken string `json:"liquidity_token"`
 		} `json:"primary_pair"`
 	}
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: fieldContract,
 		QueryMsg:        []byte("{\"config\":{}}"),
 	}, &fieldConfig)
@@ -169,7 +171,7 @@ func getFieldOfMarsPositions(
 	var fieldState struct {
 		TotalBondUnits sdk.Int `json:"total_bond_units"`
 	}
-	err = contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err = util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: fieldContract,
 		QueryMsg:        []byte("{\"state\": {}}"),
 	}, &fieldState)
@@ -196,7 +198,7 @@ func getFieldOfMarsPositions(
 		// fmt.Printf("last account: %s, len: %d\n", lastAcc, len(positions))
 		query := fmt.Sprintf("{\"positions\":{\"limit\": %d,\"start_after\":\"%s\"}}", limit, lastAcc)
 		var pagedPositions []Position
-		err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 			ContractAddress: fieldContract,
 			QueryMsg:        []byte(query),
 		}, &pagedPositions)

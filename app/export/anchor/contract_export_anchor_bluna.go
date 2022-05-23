@@ -1,24 +1,23 @@
-package app
+package anchor
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
-var (
-	bLuna    = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
-	bLunaHub = "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts"
-)
+var ()
 
 // ExportbLUNA get bLUNA balance for all accounts, multiply ER
-func ExportbLUNA(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
-	logger := app.Logger()
+func ExportbLUNA(terra *app.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(terra)
+	logger := terra.Logger()
 
 	var balances = make(map[string]sdk.Int)
 	logger.Info("fetching bLUNA holders and balances...")
 
-	if err := getCW20AccountsAndBalances(ctx, balances, bLuna, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, balances, BLuna, q); err != nil {
 		return nil, err
 	}
 
@@ -26,8 +25,8 @@ func ExportbLUNA(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, er
 	var bLunaHubState struct {
 		ExchangeRate sdk.Dec `json:"exchange_rate"`
 	}
-	if err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: bLunaHub,
+	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: BLunaHub,
 		QueryMsg:        []byte("{\"state\":{}}"),
 	}, &bLunaHubState); err != nil {
 		return nil, err

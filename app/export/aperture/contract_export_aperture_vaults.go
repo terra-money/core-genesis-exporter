@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -38,8 +40,8 @@ type BatchItem struct {
 	} `json:"info"`
 }
 
-func ExportApertureVaults(app *TerraApp, q wasmtypes.QueryServer, snapshotType Snapshot) (map[string]map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
+func ExportApertureVaults(app *terra.TerraApp, q wasmtypes.QueryServer, snapshotType util.Snapshot) (map[string]map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	lastPosition, err := getApertureLastPositionId(ctx, q)
 	if err != nil {
 		panic(err)
@@ -64,8 +66,8 @@ func ExportApertureVaults(app *TerraApp, q wasmtypes.QueryServer, snapshotType S
 		// UST amount in aperture is a "virtual" amount as the UST is converted to aUST and used
 		// as collateral in mirror. The UST amount field is a calculated field for the final UST amount
 		// owned by the wallet
-		if snapshotType == Snapshot(PreAttack) {
-			balances[aUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
+		if snapshotType == util.Snapshot(util.PreAttack) {
+			balances[util.AUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
 		} else {
 			balances["uusd"][item.Holder] = item.Info.UstAmount
 		}
@@ -78,7 +80,7 @@ func getApertureLastPositionId(ctx context.Context, q wasmtypes.QueryServer) (sd
 	var nextPositionResponse struct {
 		NextPosition sdk.Int `json:"next_position_id"`
 	}
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: apertureManager,
 		QueryMsg:        []byte("{\"get_next_position_id\": {}}"),
 	}, &nextPositionResponse)
@@ -104,7 +106,7 @@ func getApertureOpenPositions(ctx context.Context, q wasmtypes.QueryServer, posi
 	positionQuery := fmt.Sprintf("{\"position_id\":\"%s\", \"chain_id\": 3 }", positionId)
 	query := fmt.Sprintf("{\"batch_get_position_info\": {\"positions\": [%s]}}", positionQuery)
 	// fmt.Println(query)
-	err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: apertureDeltaNeutralManager,
 		QueryMsg:        []byte(query),
 	}, &batchResponse)

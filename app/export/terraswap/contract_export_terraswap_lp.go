@@ -2,6 +2,8 @@ package app
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -13,8 +15,8 @@ var (
 
 // ExportTerraswapLiquidity scan all factory contracts, look for pairs that have luna or ust,
 // then
-func ExportTerraswapLiquidity(app *TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
-	ctx := prepCtx(app)
+func ExportTerraswapLiquidity(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	// logger := app.Logger()
 
 	// get all pairs from factory
@@ -33,7 +35,7 @@ func ExportTerraswapLiquidity(app *TerraApp, q wasmtypes.QueryServer) (map[strin
 		} `json:"pairs"`
 	}
 
-	if err := contractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: terraswapFactory,
 		QueryMsg:        []byte("{\"pairs\":{}}"),
 	}, &pairsResponse); err != nil {
