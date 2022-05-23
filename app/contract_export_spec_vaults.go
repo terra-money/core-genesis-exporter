@@ -145,6 +145,7 @@ func getRewardsInfo(ctx context.Context, q wasmtypes.QueryServer, farmAddr strin
 	if err != nil {
 		return reward, err
 	}
+
 	return reward, err
 }
 
