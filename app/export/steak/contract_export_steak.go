@@ -22,7 +22,7 @@ func ExportSteak(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalance, e
 
 	// 1. Iterate over all Steak token holders, get their balance
 	var balanceMap = make(map[string]sdk.Int)
-	if err := util.GetCW20AccountsAndbalances(ctx, app.WasmKeeper, AddressSteakToken, balanceMap); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, AddressSteakToken, balanceMap); err != nil {
 		return nil, fmt.Errorf("error during cw20 iteration: %v", err)
 	}
 
@@ -40,7 +40,7 @@ func ExportSteak(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalance, e
 	// 3. Iterate over balanceMap and apply exchange rate
 	var finalBalance = make(util.SnapshotBalance)
 	for addr, bal := range balanceMap {
-		finalBalance[addr] = util.Balance{
+		finalBalance[addr] = util.SnapshotBalance{
 			Denom:   util.DenomLUNA,
 			Balance: hubState.ExchangeRate.MulInt(bal).TruncateInt(),
 		}

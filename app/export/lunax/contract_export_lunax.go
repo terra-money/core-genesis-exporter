@@ -21,7 +21,7 @@ func ExportLunaX(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.I
 	var balances = make(map[string]sdk.Int)
 	logger.Info("fetching LunaX holders and balances...")
 
-	if err := util.GetCW20AccountsAndBalances(ctx, balances, anchor.BLuna, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances_Inefficient(ctx, balances, anchor.BLuna, q); err != nil {
 		return nil, err
 	}
 

@@ -16,7 +16,7 @@ var (
 )
 
 // ExportSuberra iterates over subwallets, then credit funds back to its owner
-func ExportSuberra(app *terra.TerraApp) (map[string]util.Balance, error) {
+func ExportSuberra(app *terra.TerraApp) (map[string]util.SnapshotBalance, error) {
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
 
@@ -30,7 +30,7 @@ func ExportSuberra(app *terra.TerraApp) (map[string]util.Balance, error) {
 	}
 
 	// 3. map subwallets to admins
-	ownerBalances := make(map[string]util.Balance)
+	ownerBalances := make(map[string]util.SnapshotBalance)
 	if err := mapSubwalletToAdmin(ctx, qs, subwalletBalances, ownerBalances); err != nil {
 		return nil, err
 	}
@@ -69,7 +69,7 @@ func iterateSubwalletsAndGetAUstBalance(ctx context.Context, q wasmtypes.QuerySe
 	return nil
 }
 
-func mapSubwalletToAdmin(ctx context.Context, q wasmtypes.QueryServer, subwalletBalances map[string]sdk.Int, ownerBalances map[string]util.Balance) error {
+func mapSubwalletToAdmin(ctx context.Context, q wasmtypes.QueryServer, subwalletBalances map[string]sdk.Int, ownerBalances map[string]util.SnapshotBalance) error {
 	var owner string
 	for addr, bal := range subwalletBalances {
 		if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
@@ -79,7 +79,7 @@ func mapSubwalletToAdmin(ctx context.Context, q wasmtypes.QueryServer, subwallet
 			return err
 		}
 
-		ownerBalances[owner] = util.Balance{
+		ownerBalances[owner] = util.SnapshotBalance{
 			Denom:   util.DenomAUST,
 			Balance: bal,
 		}
