@@ -7,17 +7,18 @@ import (
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
-var ()
-
 // ExportbLUNA get bLUNA balance for all accounts, multiply ER
-func ExportbLUNA(terra *app.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
-	ctx := util.PrepCtx(terra)
-	logger := terra.Logger()
+func ExportbLUNA(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+	bl.RegisterAddress(util.DenomLUNA, AddressBLUNAHub)
 
-	var balances = make(map[string]sdk.Int)
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	logger := app.Logger()
+
+	var balanceMap = make(util.BalanceMap)
 	logger.Info("fetching bLUNA holders and balances...")
 
-	if err := util.GetCW20AccountsAndBalances(ctx, balances, BLuna, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, AddressBLUNAToken, balanceMap); err != nil {
 		return nil, err
 	}
 
@@ -26,16 +27,20 @@ func ExportbLUNA(terra *app.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.I
 		ExchangeRate sdk.Dec `json:"exchange_rate"`
 	}
 	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: BLunaHub,
+		ContractAddress: AddressBLUNAHub,
 		QueryMsg:        []byte("{\"state\":{}}"),
 	}, &bLunaHubState); err != nil {
 		return nil, err
 	}
 
 	// balance * ER
-	for address, balance := range balances {
-		balances[address] = bLunaHubState.ExchangeRate.MulInt(balance).TruncateInt()
+	var finalBalance = make(util.SnapshotBalanceMap)
+	for address, balance := range balanceMap {
+		finalBalance[address] = util.SnapshotBalance{
+			Denom:   util.DenomLUNA,
+			Balance: bLunaHubState.ExchangeRate.MulInt(balance).TruncateInt(),
+		}
 	}
 
-	return balances, nil
+	return finalBalance, nil
 }
