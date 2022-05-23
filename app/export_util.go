@@ -36,6 +36,12 @@ type balance struct {
 	Balance sdktypes.Int `json:"balance"`
 }
 
+type Snapshot string
+const (
+	PreAttack  string = "preattack"
+	PostAttack string = "preattack"
+)
+
 type lpHoldings map[string]types.Int // {wallet: amount}
 
 func prepCtx(app *TerraApp) context.Context {
