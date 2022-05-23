@@ -3,7 +3,6 @@ package app
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
-	"github.com/terra-money/core/app/export/anchor"
 	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
@@ -21,7 +20,7 @@ func ExportLunaX(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.I
 	var balances = make(map[string]sdk.Int)
 	logger.Info("fetching LunaX holders and balances...")
 
-	if err := util.GetCW20AccountsAndBalances_Inefficient(ctx, balances, anchor.BLuna, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances_Inefficient(ctx, balances, lunaX, q); err != nil {
 		return nil, err
 	}
 
@@ -30,7 +29,7 @@ func ExportLunaX(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.I
 		ExchangeRate sdk.Dec `json:"exchange_rate"`
 	}
 	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: anchor.BLunaHub,
+		ContractAddress: lunaXState,
 		QueryMsg:        []byte("{\"state\":{}}"),
 	}, &bLunaHubState); err != nil {
 		return nil, err

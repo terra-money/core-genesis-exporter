@@ -30,7 +30,7 @@ func ExportLidoContract(
 	stLunaBalances map[string]sdk.Int,
 	bLunaBalances map[string]sdk.Int,
 	bl *util.Blacklist,
-) (map[string]util.Balance, map[string]util.Balance, error) {
+) (util.SnapshotBalanceMap, util.SnapshotBalanceMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	lidoState, err := getExchangeRates(ctx, q)
@@ -91,14 +91,14 @@ func ExportLidoContract(
 		lunaBalance[k] = lunaBalance[k].Add(bLunaRewards.Mul(bondedBLunaHolders[k].Quo(bLunaTotalSupply)))
 	}
 
-	ustBalance := make(map[string]util.Balance)
+	ustBalance := make(map[string]util.SnapshotBalance)
 	for k, _ := range bondedStLunaHolders {
 		ustToAdd := stLunaUstRewards.Mul(bondedStLunaHolders[k].Quo(stLunaTotalSupply))
 		if ustToAdd.IsZero() {
 			continue
 		}
 		if ustBalance[k].Balance.IsNil() {
-			ustBalance[k] = util.Balance{
+			ustBalance[k] = util.SnapshotBalance{
 				Denom:   util.DenomUST,
 				Balance: sdk.NewInt(0),
 			}
@@ -112,7 +112,7 @@ func ExportLidoContract(
 			continue
 		}
 		if ustBalance[k].Balance.IsNil() {
-			ustBalance[k] = util.Balance{
+			ustBalance[k] = util.SnapshotBalance{
 				Denom:   util.DenomUST,
 				Balance: sdk.NewInt(0),
 			}
@@ -121,10 +121,10 @@ func ExportLidoContract(
 		(&userUstBalance).AddInto(ustToAdd)
 	}
 
-	finalLunaBalance := make(map[string]util.Balance)
+	finalLunaBalance := make(map[string]util.SnapshotBalance)
 	sumOfLunaBalance := sdk.NewInt(0)
 	for k, b := range lunaBalance {
-		finalLunaBalance[k] = util.Balance{
+		finalLunaBalance[k] = util.SnapshotBalance{
 			Denom:   util.DenomLUNA,
 			Balance: b,
 		}

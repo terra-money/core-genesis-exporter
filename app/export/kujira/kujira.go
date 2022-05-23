@@ -16,7 +16,7 @@ const (
 	KujiraUstPair   = "terra1zkyrfyq7x9v5vqnnrznn3kvj35az4f6jxftrl2"
 )
 
-func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (map[string]util.Balance, error) {
+func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("bid")
 	vaultAddr, err := sdk.AccAddressFromBech32(KujiraAUstVault)
@@ -24,7 +24,7 @@ func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (map[string]util
 		return nil, err
 	}
 
-	balances := make(map[string]util.Balance)
+	balances := make(util.SnapshotBalanceMap)
 	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), vaultAddr, prefix, func(key, value []byte) bool {
 		var bid struct {
 			Bidder       string  `json:"bidder"`
@@ -49,7 +49,7 @@ func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (map[string]util
 			previousAmount = sdk.NewInt(0)
 		}
 
-		balances[bidderAddr.String()] = util.Balance{
+		balances[bidderAddr.String()] = util.SnapshotBalance{
 			Denom:   util.AUST,
 			Balance: previousAmount.Add(bid.Amount),
 		}

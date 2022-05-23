@@ -7,6 +7,11 @@ type SnapshotBalance struct {
 	Denom   string  `json:"denom"`
 	Balance sdk.Int `json:"balance"`
 }
+
+func (b *SnapshotBalance) AddInto(i sdk.Int) {
+	b.Balance = b.Balance.Add(i)
+}
+
 type SnapshotBalanceMap map[string]SnapshotBalance
 
 type Blacklist map[string][]string

@@ -15,7 +15,7 @@ var (
 
 // ExportAlice iterates over aaUST owners & extract balance
 // 1aaUST = 1aUST
-func ExportAlice(terra *app.TerraApp, b util.Blacklist) (map[string]util.Balance, error) {
+func ExportAlice(terra *app.TerraApp, b util.Blacklist) (util.SnapshotBalanceMap, error) {
 	// register blacklist
 	b.RegisterAddress(util.DenomAUST, AliceaaUSTWrapper)
 
@@ -23,7 +23,7 @@ func ExportAlice(terra *app.TerraApp, b util.Blacklist) (map[string]util.Balance
 	// then get balance
 	// 1aaUST = 1aUST
 	ctx := util.PrepCtx(terra)
-	var balances = make(map[string]util.Balance)
+	var balances = make(util.SnapshotBalanceMap)
 	if err := forceIterateAndFindWalletAndBalance(ctx, terra.WasmKeeper, AliceaaUSTWrapper, balances); err != nil {
 		return nil, err
 	}
@@ -31,7 +31,7 @@ func ExportAlice(terra *app.TerraApp, b util.Blacklist) (map[string]util.Balance
 	return balances, nil
 }
 
-func forceIterateAndFindWalletAndBalance(ctx context.Context, keeper wasmKeeper.Keeper, aaUST string, balances map[string]util.Balance) error {
+func forceIterateAndFindWalletAndBalance(ctx context.Context, keeper wasmKeeper.Keeper, aaUST string, balances map[string]util.SnapshotBalance) error {
 	prefix := util.GeneratePrefix("balance")
 	addr, _ := sdk.AccAddressFromBech32(aaUST)
 
@@ -40,7 +40,7 @@ func forceIterateAndFindWalletAndBalance(ctx context.Context, keeper wasmKeeper.
 		util.MustUnmarshalTMJSON(value, &bal)
 
 		balInInt, _ := sdk.NewIntFromString(bal)
-		balances[string(key)] = util.Balance{
+		balances[string(key)] = util.SnapshotBalance{
 			Denom:   util.DenomAUST,
 			Balance: balInInt,
 		}
