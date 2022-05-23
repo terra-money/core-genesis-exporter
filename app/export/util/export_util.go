@@ -109,6 +109,8 @@ func GetCW20Balance(ctx context.Context, q wasmtypes.QueryServer, cw20Addr strin
 	return balance.Balance, nil
 }
 
+var GetCW20AccountsAndbalances = GetCW20AccountsAndBalances2
+
 func GetCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, contractAddress string, balanceMap map[string]sdktypes.Int) error {
 	prefix := GeneratePrefix("balance")
 	contractAddr, err := sdktypes.AccAddressFromBech32(contractAddress)
@@ -127,7 +129,7 @@ func GetCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, 
 	return nil
 }
 
-func GetCW20AccountsAndBalances(ctx context.Context, balanceMap map[string]sdktypes.Int, contractAddress string, q wasmtypes.QueryServer) error {
+func GetCW20AccountsAndBalances_Inefficient(ctx context.Context, balanceMap map[string]sdktypes.Int, contractAddress string, q wasmtypes.QueryServer) error {
 	var allAccounts allAccountsResponse
 	var accounts []string
 
