@@ -31,6 +31,7 @@ import (
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 
 	terraapp "github.com/terra-money/core/app"
+	export "github.com/terra-money/core/app/export"
 	terralegacy "github.com/terra-money/core/app/legacy"
 	"github.com/terra-money/core/app/params"
 	authcustomcli "github.com/terra-money/core/custom/auth/client/cli"
@@ -273,5 +274,7 @@ func (a appCreator) appExport(
 	//
 	//terraapp.ExportAnchorDeposit(snapshotTerraApp, wasmkeeper.NewQuerier(snapshotTerraApp.WasmKeeper))
 
-	return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
+	// return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
+	export.ExportContracts(terraApp)
+	return terraApp.TestExportAllStore()
 }

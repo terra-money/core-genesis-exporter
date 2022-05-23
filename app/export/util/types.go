@@ -8,3 +8,9 @@ type SnapshotBalance struct {
 	Balance sdk.Int `json:"balance"`
 }
 type SnapshotBalanceMap map[string]SnapshotBalance
+
+type Blacklist map[string][]string
+
+func (bl Blacklist) RegisterAddress(denom string, address string) {
+	bl[denom] = append(bl[denom], address)
+}

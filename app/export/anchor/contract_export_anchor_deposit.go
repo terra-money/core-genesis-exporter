@@ -9,8 +9,6 @@ import (
 
 func ExportAnchorDeposit(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
 	ctx := util.PrepCtx(app)
-	q := util.PrepWasmQueryServer(app)
-
 	logger := app.Logger()
 
 	// scan through aUST holders, append them to accounts

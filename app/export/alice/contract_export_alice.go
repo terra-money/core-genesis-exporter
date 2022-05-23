@@ -5,6 +5,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/util"
 	wasmKeeper "github.com/terra-money/core/x/wasm/keeper"
 )
 
@@ -14,15 +15,15 @@ var (
 
 // ExportAlice iterates over aaUST owners & extract balance
 // 1aaUST = 1aUST
-func ExportAlice(terra *app.TerraApp, b Blacklist) (map[string]Balance, error) {
+func ExportAlice(terra *app.TerraApp, b util.Blacklist) (map[string]util.Balance, error) {
 	// register blacklist
-	b.RegisterAddress(DenomAUST, AliceaaUSTWrapper)
+	b.RegisterAddress(util.DenomAUST, AliceaaUSTWrapper)
 
 	// iterate through cw20 users (force iterate since alice contract doesn't implement all_accounts)
 	// then get balance
 	// 1aaUST = 1aUST
-	ctx := PrepCtx(terra)
-	var balances = make(map[string]Balance)
+	ctx := util.PrepCtx(terra)
+	var balances = make(map[string]util.Balance)
 	if err := forceIterateAndFindWalletAndBalance(ctx, terra.WasmKeeper, AliceaaUSTWrapper, balances); err != nil {
 		return nil, err
 	}
@@ -30,17 +31,17 @@ func ExportAlice(terra *app.TerraApp, b Blacklist) (map[string]Balance, error) {
 	return balances, nil
 }
 
-func forceIterateAndFindWalletAndBalance(ctx context.Context, keeper wasmKeeper.Keeper, aaUST string, balances map[string]balance) error {
-	prefix := GeneratePrefix("balance")
+func forceIterateAndFindWalletAndBalance(ctx context.Context, keeper wasmKeeper.Keeper, aaUST string, balances map[string]util.Balance) error {
+	prefix := util.GeneratePrefix("balance")
 	addr, _ := sdk.AccAddressFromBech32(aaUST)
 
 	var bal string
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), addr, prefix, func(key, value []byte) bool {
-		MustUnmarshalTMJSON(value, &bal)
+		util.MustUnmarshalTMJSON(value, &bal)
 
 		balInInt, _ := sdk.NewIntFromString(bal)
-		balances[string(key)] = Balance{
-			Denom:   DenomAUST,
+		balances[string(key)] = util.Balance{
+			Denom:   util.DenomAUST,
 			Balance: balInInt,
 		}
 
