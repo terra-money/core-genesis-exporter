@@ -43,12 +43,8 @@ func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer) (map[st
 	if err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, maLunaToken, balances); err != nil {
 		return nil, err
 	}
-	marsMarketAddr, err := sdk.AccAddressFromBech32(marsMarket)
-	if err != nil {
-		return nil, err
-	}
 
-	marsLunaBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, string(marsMarketAddr))
+	marsLunaBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, marsMarket)
 	if err != nil {
 		return nil, err
 	}
