@@ -7,6 +7,8 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
@@ -43,15 +45,15 @@ type UserInfo struct {
 //       "wallet_address": "amount",
 //   },
 // }
-func ExportApolloVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]lpHoldings, error) {
-	ctx := prepCtx(app)
+func ExportApolloVaultLPs(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+	ctx := util.PrepCtx(app)
 	strats, err := getListOfStrategies(ctx, app.WasmKeeper)
 	if err != nil {
 		log.Println(err)
 	}
 	// log.Printf("no. of apollo strats: %d\n", len(strats))
 
-	allLpHoldings := make(map[string]lpHoldings)
+	allLpHoldings := make(map[string]map[string]sdk.Int)
 	for _, strat := range strats {
 		lpHoldings, lpTokenAddr, err := getLpHoldingsForStrat(ctx, app.WasmKeeper, strat)
 		if err != nil {
@@ -62,28 +64,28 @@ func ExportApolloVaultLPs(app *TerraApp, q wasmtypes.QueryServer) (map[string]lp
 	return allLpHoldings, nil
 }
 
-func getLpHoldingsForStrat(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress) (lpHoldings, sdk.AccAddress, error) {
+func getLpHoldingsForStrat(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress) (map[string]sdk.Int, sdk.AccAddress, error) {
 	lpTokenAddr, _, err := getStrategyConfig(ctx, keeper, strategyAddr)
 	if err != nil {
-		return lpHoldings{}, lpTokenAddr, err
+		return map[string]sdk.Int{}, lpTokenAddr, err
 	}
 	// log.Printf("vault: %s, lp token: %s, lp pair: %s\n", strategyAddr, lpTokenAddr, tokenPair)
 	stratInfo, err := getStrategyInfo(ctx, keeper, strategyAddr)
 	if err != nil {
-		return lpHoldings{}, lpTokenAddr, err
+		return map[string]sdk.Int{}, lpTokenAddr, err
 	}
 	// log.Printf("%v\n", stratInfo)
 	userLpHoldings, err := getUserLpHoldings(ctx, keeper, strategyAddr, stratInfo)
 	if err != nil {
-		return lpHoldings{}, lpTokenAddr, err
+		return map[string]sdk.Int{}, lpTokenAddr, err
 	}
 	log.Printf("len: %d", len(userLpHoldings))
 	return userLpHoldings, lpTokenAddr, nil
 }
 
-func getUserLpHoldings(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress, stratInfo StrategyInfo) (lpHoldings, error) {
-	prefix := generatePrefix("user")
-	lpHoldings := make(lpHoldings)
+func getUserLpHoldings(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress, stratInfo StrategyInfo) (map[string]sdk.Int, error) {
+	prefix := util.GeneratePrefix("user")
+	lpHoldings := make(map[string]sdk.Int)
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), strategyAddr, prefix, func(key, value []byte) bool {
 		// fmt.Printf("%x, %s\n", key, value)
 		var userInfo UserInfo
@@ -103,7 +105,7 @@ func getUserLpHoldings(ctx context.Context, keeper keeper.Keeper, strategyAddr s
 }
 
 func getStrategyInfo(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress) (StrategyInfo, error) {
-	prefix := generatePrefix("strategy")
+	prefix := util.GeneratePrefix("strategy")
 	var stratInfo StrategyInfo
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), strategyAddr, prefix, func(key, value []byte) bool {
 		// fmt.Printf("%x, %s\n", key, value)
@@ -117,7 +119,7 @@ func getStrategyInfo(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk
 }
 
 func getStrategyConfig(ctx context.Context, keeper keeper.Keeper, strategyAddr sdk.AccAddress) (sdk.AccAddress, sdk.AccAddress, error) {
-	prefix := generatePrefix("config")
+	prefix := util.GeneratePrefix("config")
 	var stratConfig StrategyConfig
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), strategyAddr, prefix, func(key, value []byte) bool {
 		// fmt.Printf("%x, %s\n", key, value)
@@ -127,11 +129,11 @@ func getStrategyConfig(ctx context.Context, keeper keeper.Keeper, strategyAddr s
 		}
 		return false
 	})
-	baseToken, err := AccAddressFromBase64(stratConfig.LpTokenAddr)
+	baseToken, err := util.AccAddressFromBase64(stratConfig.LpTokenAddr)
 	if err != nil {
 		panic(err)
 	}
-	tokenPair, err := AccAddressFromBase64(stratConfig.StrategyConfig.AssetTokenPair)
+	tokenPair, err := util.AccAddressFromBase64(stratConfig.StrategyConfig.AssetTokenPair)
 	if err != nil {
 		panic(err)
 	}
@@ -144,7 +146,7 @@ func getListOfStrategies(ctx context.Context, keeper keeper.Keeper) ([]sdk.AccAd
 		return nil, nil
 	}
 
-	prefix := generatePrefix("strategies")
+	prefix := util.GeneratePrefix("strategies")
 	var strats []sdk.AccAddress
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), contractAddr, prefix, func(key, value []byte) bool {
 		var strat Strategy
@@ -153,7 +155,7 @@ func getListOfStrategies(ctx context.Context, keeper keeper.Keeper) ([]sdk.AccAd
 			// skip if error parsing json
 			return false
 		}
-		stratAddr, err := AccAddressFromBase64(strat.Address)
+		stratAddr, err := util.AccAddressFromBase64(strat.Address)
 		if err != nil {
 			// skip if error parsing address
 			return false

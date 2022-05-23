@@ -8,6 +8,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/multisig"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -23,8 +25,8 @@ type Cw3InitMsg struct {
 	} `json:"voters"`
 }
 
-func GenerateNativeMultiSigFromCw3(app *TerraApp, q wasmtypes.QueryServer) (map[string]NativeMultiSig, error) {
-	ctx := prepCtx(app)
+func GenerateNativeMultiSigFromCw3(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]NativeMultiSig, error) {
+	ctx := util.PrepCtx(app)
 	cw3ToMultisig := make(map[string]NativeMultiSig)
 	totalNumberOfSeenContracts := 0
 	app.WasmKeeper.IterateContractInfo(types.UnwrapSDKContext(ctx), func(ci wasmtypes.ContractInfo) bool {
