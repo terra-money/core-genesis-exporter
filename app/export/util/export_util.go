@@ -120,9 +120,14 @@ func GetCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, 
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), contractAddr, prefix, func(key, value []byte) bool {
 		// first and last byte is not used
 		balance, ok := sdktypes.NewIntFromString(string(value[1 : len(value)-1]))
-		// fmt.Printf("%s, %x, %s, %v\n", key, value, balance, ok)
+		// fmt.Printf("%x, %x, %s, %v\n", key, value, balance, ok)
 		if ok {
-			balanceMap[string(key)] = balance
+			if strings.Contains(string(key), "terra") {
+				balanceMap[string(key)] = balance
+			} else {
+				addr := sdk.AccAddress(key)
+				balanceMap[addr.String()] = balance
+			}
 		}
 		return false
 	})
