@@ -2,6 +2,7 @@ package steak
 
 import (
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
@@ -13,7 +14,7 @@ var (
 	AddressSteakToken = "terra1rl4zyexjphwgx6v3ytyljkkc4mrje2pyznaclv"
 )
 
-func ExportSteak(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalance, error) {
+func ExportSteak(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
 	// Blacklist steak hub from LUNA balance snapshot
 	bl.RegisterAddress(util.DenomLUNA, AddressSteakHub)
 
@@ -38,7 +39,7 @@ func ExportSteak(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalance, e
 	}
 
 	// 3. Iterate over balanceMap and apply exchange rate
-	var finalBalance = make(util.SnapshotBalance)
+	var finalBalance = make(util.SnapshotBalanceMap)
 	for addr, bal := range balanceMap {
 		finalBalance[addr] = util.SnapshotBalance{
 			Denom:   util.DenomLUNA,

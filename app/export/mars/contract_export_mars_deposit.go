@@ -33,7 +33,7 @@ var (
 // 2. Find total supply of maTokens
 // 3. Find balance of assets in bank
 // 4. Assign accounts with assets proportionally
-func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util.Blacklist) (map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
@@ -62,10 +62,13 @@ func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer) (map[st
 	}
 	// There is rounding error here. Should we assign this fairly or ignore it? (<1000 uluna)
 	fmt.Printf("%s, %s, difference: %s\n", sum, marsLunaBalance, marsLunaBalance.Sub(sum))
+
+	// Black listing Mars Market Contract for deduplication later
+	bl.RegisterAddress(util.DenomLUNA, marsMarket)
 	return balances, nil
 }
 
-func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
+func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util.Blacklist) (map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
@@ -92,6 +95,8 @@ func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer) (map[str
 		balances[address] = lunaMarketState.LiquidityIndex.MulInt(balance).TruncateInt()
 	}
 
+	// Black listing Mars Market Contract for deduplication later
+	bl.RegisterAddress(util.DenomUST, marsMarket)
 	return balances, nil
 }
 

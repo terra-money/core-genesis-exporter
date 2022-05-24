@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
 	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
@@ -43,18 +44,33 @@ func ExportLidoContract(
 	if err != nil {
 		return nil, nil, err
 	}
+	// fmt.Printf("Sum of bonded stLuna: %s\n", util.Sum(bondedStLunaHolders))
+
 	bondedBLunaHolders := make(map[string]sdk.Int)
-	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, StLuna, bondedBLunaHolders)
+	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, BLuna, bondedBLunaHolders)
 	if err != nil {
 		return nil, nil, err
 	}
+	// fmt.Printf("Sum of bonded bLuna: %s\n", util.Sum(bondedBLunaHolders))
+
 	unbondingBluna, unbondingStLuna, err := getUnbondingTokens(ctx, app.WasmKeeper)
 	if err != nil {
 		return nil, nil, err
 	}
+	// fmt.Printf("Sum of unbonding stLuna: %s\n", util.Sum(unbondingStLuna))
+	// fmt.Printf("Sum of unbonding bLuna: %s\n", util.Sum(unbondingBluna))
+
 	// Merge with previously calculated from LPs and vaults etc
 	stLunaBalances = util.MergeMaps(stLunaBalances, bondedStLunaHolders, unbondingStLuna)
 	bLunaBalances = util.MergeMaps(bLunaBalances, bondedBLunaHolders, unbondingBluna)
+
+	// Deduplicate contracts ownership from previous exports
+	for _, b := range (*bl)[StLuna] {
+		stLunaBalances[b] = sdk.NewInt(0)
+	}
+	for _, b := range (*bl)[BLuna] {
+		bLunaBalances[b] = sdk.NewInt(0)
+	}
 
 	lunaBalance := util.MergeMaps(
 		applyExchangeRates(stLunaBalances, lidoState.StLunaExchangeRate),
@@ -74,6 +90,7 @@ func ExportLidoContract(
 	if err != nil {
 		return nil, nil, err
 	}
+	// fmt.Printf("Sum of luna rewards: %s\n", lunaRewards)
 	stLunaRewards := lunaRewards.Mul(lidoState.TotalBondStLuna.Quo(lidoState.TotalBondStLuna.Add(lidoState.TotalBondBLuna)))
 	bLunaRewards := lunaRewards.Mul(lidoState.TotalBondBLuna.Quo(lidoState.TotalBondStLuna.Add(lidoState.TotalBondBLuna)))
 
@@ -131,26 +148,26 @@ func ExportLidoContract(
 		sumOfLunaBalance = sumOfLunaBalance.Add(b)
 	}
 
-	fmt.Printf("%s", sumOfLunaBalance)
+	fmt.Printf("%s\n", sumOfLunaBalance)
 
 	// TODO: Need to verify that the total delegations + rewards = sumOfLunaBalances
 
 	// lidoHubAddr, _ := sdk.AccAddressFromBech32(LidoHub)
-	// // totalDelegations := sdk.NewInt(0)
-	// // app.StakingKeeper.IterateDelegations(sdk.UnwrapSDKContext(ctx), lidoHubAddr, func(index int64, del stakingtypes.DelegationI) (stop bool) {
-	// // 	totalDelegations = totalDelegations.Add(del.GetShares().TruncateInt())
-	// // 	return false
-	// // })
+	// totalDelegations := sdk.NewInt(0)
+	// app.StakingKeeper.IterateDelegations(sdk.UnwrapSDKContext(ctx), lidoHubAddr, func(index int64, del stakingtypes.DelegationI) (stop bool) {
+	// 	totalDelegations = totalDelegations.Add(del.GetShares().TruncateInt())
+	// 	return false
+	// })
 
-	// // unbondingDelegations := app.StakingKeeper.GetAllUnbondingDelegations(sdk.UnwrapSDKContext(ctx), lidoHubAddr)
-	// // totalUnbonding := sdk.NewInt(0)
-	// // for _, u := range unbondingDelegations {
-	// // 	for _, e := range u.Entries {
-	// // 		totalUnbonding = totalUnbonding.Add(e.Balance)
-	// // 	}
-	// // }
+	// unbondingDelegations := app.StakingKeeper.GetAllUnbondingDelegations(sdk.UnwrapSDKContext(ctx), lidoHubAddr)
+	// totalUnbonding := sdk.NewInt(0)
+	// for _, u := range unbondingDelegations {
+	// 	for _, e := range u.Entries {
+	// 		totalUnbonding = totalUnbonding.Add(e.Balance)
+	// 	}
+	// }
 
-	// // fmt.Printf("difference: %s\n", sumOfLunaBalance.Sub(lunaRewards).Sub(totalDelegations))
+	// fmt.Printf("difference: %s\n", sumOfLunaBalance.Sub(lunaRewards).Sub(totalDelegations))
 
 	return finalLunaBalance, ustBalance, nil
 }
@@ -180,7 +197,7 @@ func getUstRewards(ctx context.Context, k wasmtypes.BankKeeper) (sdk.Int, error)
 func applyExchangeRates(balances map[string]sdk.Int, exchangeRate sdk.Dec) map[string]sdk.Int {
 	lunaBalances := make(map[string]sdk.Int)
 	for k, v := range balances {
-		lunaBalances[k] = exchangeRate.MulInt(v).RoundInt()
+		lunaBalances[k] = exchangeRate.MulInt(v).TruncateInt()
 	}
 	return lunaBalances
 }
@@ -191,19 +208,32 @@ func getUnbondingTokens(ctx context.Context, k wasmkeeper.Keeper) (map[string]sd
 	if err != nil {
 		panic(err)
 	}
-	var unbondingRes struct {
-		BlunaAmount  sdk.Int `json:"bluna_amount"`
-		StLunaAmount sdk.Int `json:"stluna_amount"`
-	}
 	bLunaHolding := make(map[string]sdk.Int)
 	stLunaHolding := make(map[string]sdk.Int)
 	k.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), lidoHubAddr, prefix, func(key, value []byte) bool {
-		// fmt.Printf("%s, %s\n", key[3:len(key)-2], value)
-		// key is in the format [len("\"address\"")][address][1 byte]
-		wallet := string(key[3 : len(key)-2])
-		json.Unmarshal(value, &unbondingRes)
-		bLunaHolding[wallet] = unbondingRes.BlunaAmount
-		stLunaHolding[wallet] = unbondingRes.StLunaAmount
+		// key is in the format [len("\"address\"")]["address"][1 byte]
+		var unbondingRes struct {
+			BLunaAmount  sdk.Int `json:"bluna_amount"`
+			StLunaAmount sdk.Int `json:"stluna_amount"`
+		}
+		wallet := string(key[3 : len(key)-4])
+		err = json.Unmarshal(value, &unbondingRes)
+		if err != nil {
+			panic(err)
+		}
+		// Users can have multiple unbounding requests
+		if !unbondingRes.BLunaAmount.IsZero() {
+			if bLunaHolding[wallet].IsNil() {
+				bLunaHolding[wallet] = sdk.NewInt(0)
+			}
+			bLunaHolding[wallet] = bLunaHolding[wallet].Add(unbondingRes.BLunaAmount)
+		}
+		if !unbondingRes.StLunaAmount.IsZero() {
+			if stLunaHolding[wallet].IsNil() {
+				stLunaHolding[wallet] = sdk.NewInt(0)
+			}
+			stLunaHolding[wallet] = stLunaHolding[wallet].Add(unbondingRes.StLunaAmount)
+		}
 		return false
 	})
 	return bLunaHolding, stLunaHolding, nil

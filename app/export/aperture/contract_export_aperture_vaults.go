@@ -40,7 +40,7 @@ type BatchItem struct {
 	} `json:"info"`
 }
 
-func ExportApertureVaults(app *terra.TerraApp, q wasmtypes.QueryServer, snapshotType util.Snapshot) (map[string]map[string]sdk.Int, error) {
+func ExportApertureVaults(app *terra.TerraApp, q wasmtypes.QueryServer, snapshotType util.Snapshot, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
 	lastPosition, err := getApertureLastPositionId(ctx, q)
 	if err != nil {

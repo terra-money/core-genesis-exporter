@@ -78,7 +78,7 @@ func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 }
 
 // TODO: Need to exclude Kujira LP from terraswap exports later
-func ExportKujiraStaking(app *terra.TerraApp, bl *util.Blacklist) (map[string]sdk.Int, error) {
+func ExportKujiraStaking(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("reward")
 	stakeAddr, err := sdk.AccAddressFromBech32(KujiraStaking)
@@ -86,6 +86,7 @@ func ExportKujiraStaking(app *terra.TerraApp, bl *util.Blacklist) (map[string]sd
 		return nil, err
 	}
 
+	lpBalances := make(map[string]map[string]sdk.Int)
 	balances := make(map[string]sdk.Int)
 	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), stakeAddr, prefix, func(key, value []byte) bool {
 		var reward struct {
@@ -110,5 +111,7 @@ func ExportKujiraStaking(app *terra.TerraApp, bl *util.Blacklist) (map[string]sd
 
 	fmt.Printf("LP in staking: %s, sum of depositors: %s, difference: %s\n", vaultBalance, sumVault, vaultBalance.Sub(sumVault))
 	bl.RegisterAddress(util.DenomUST, KujiraUstPair)
-	return balances, nil
+	bl.RegisterAddress(KujiraUstLP, KujiraStaking)
+	lpBalances[KujiraUstLP] = balances
+	return lpBalances, nil
 }

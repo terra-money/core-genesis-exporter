@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -119,9 +121,14 @@ func GetCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, 
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), contractAddr, prefix, func(key, value []byte) bool {
 		// first and last byte is not used
 		balance, ok := sdktypes.NewIntFromString(string(value[1 : len(value)-1]))
-		// fmt.Printf("%s, %x, %s, %v\n", key, value, balance, ok)
+		// fmt.Printf("%x, %x, %s, %v\n", key, value, balance, ok)
 		if ok {
-			balanceMap[string(key)] = balance
+			if strings.Contains(string(key), "terra") {
+				balanceMap[string(key)] = balance
+			} else {
+				addr := sdk.AccAddress(key)
+				balanceMap[addr.String()] = balance
+			}
 		}
 		return false
 	})
@@ -253,4 +260,30 @@ func MergeMaps(m0 map[string]sdk.Int, ms ...map[string]sdk.Int) map[string]sdk.I
 
 	}
 	return newMap
+}
+
+func Sum(m map[string]sdk.Int) sdk.Int {
+	sum := sdk.NewInt(0)
+	for _, v := range m {
+		if !v.IsNil() {
+			sum = sum.Add(v)
+		}
+	}
+	return sum
+}
+
+func ToCsv(filePath string, headers []string, data [][]string) {
+	f, err := os.Create(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(headers, ","))))
+	if err != nil {
+		panic(err)
+	}
+
+	for _, r := range data {
+		_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(r, ","))))
+	}
 }
