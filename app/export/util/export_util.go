@@ -259,3 +259,11 @@ func MergeMaps(m0 map[string]sdk.Int, ms ...map[string]sdk.Int) map[string]sdk.I
 	}
 	return newMap
 }
+
+func Sum(m map[string]sdk.Int) sdk.Int {
+	sum := sdk.NewInt(0)
+	for _, v := range m {
+		sum = sum.Add(v)
+	}
+	return sum
+}
