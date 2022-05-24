@@ -6,6 +6,8 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/cosmos/cosmos-sdk/store"
 	"github.com/cosmos/cosmos-sdk/types"
@@ -263,7 +265,25 @@ func MergeMaps(m0 map[string]sdk.Int, ms ...map[string]sdk.Int) map[string]sdk.I
 func Sum(m map[string]sdk.Int) sdk.Int {
 	sum := sdk.NewInt(0)
 	for _, v := range m {
-		sum = sum.Add(v)
+		if !v.IsNil() {
+			sum = sum.Add(v)
+		}
 	}
 	return sum
+}
+
+func ToCsv(filePath string, headers []string, data [][]string) {
+	f, err := os.Create(filePath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+	_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(headers, ","))))
+	if err != nil {
+		panic(err)
+	}
+
+	for _, r := range data {
+		_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(r, ","))))
+	}
 }
