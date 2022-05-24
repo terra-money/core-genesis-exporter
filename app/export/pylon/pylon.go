@@ -2,7 +2,6 @@ package pylon
 
 import (
 	"context"
-	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -62,12 +61,18 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 	snapshot := make(map[string]map[string]sdk.Int)
 	snapshot[util.AUST] = make(map[string]sdk.Int)
 	snapshot[util.DenomUST] = make(map[string]sdk.Int)
+
+	// Used for final audit
+	sumAUst := sdk.NewInt(0)
+	sumUst := sdk.NewInt(0)
+
 	for _, pool := range PylonPools {
 		config, err := getConfig(ctx, q, app.BankKeeper, pool)
 		if err != nil {
 			return nil, err
 		}
-		fmt.Printf("%v\n", config)
+		sumAUst = sumAUst.Add(config.AUstAmount)
+		sumUst = sumUst.Add(config.UstAmount)
 		totalSupply, err := util.GetCW20TotalSupply(ctx, q, config.PoolToken)
 		if err != nil {
 			return nil, err
@@ -91,6 +96,12 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 			}
 		}
 	}
+
+	// actualSumAUst := util.Sum(snapshot[util.AUST])
+	// actualSumUst := util.Sum(snapshot[util.DenomUST])
+	// fmt.Printf("aUST expected: %s, actual: %s, difference: %s\n", sumAUst, actualSumAUst, sumAUst.Sub(actualSumAUst))
+	// fmt.Printf("UST expected:  %s, actual: %s, difference: %s\n", sumUst, actualSumUst, sumUst.Sub(actualSumUst))
+
 	return snapshot, nil
 }
 
