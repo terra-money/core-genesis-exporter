@@ -16,6 +16,7 @@ const (
 	StaderDelegator  = "terra1t9ree3ftvgr70fvm6y67zsqxjms8jju8kwcsdu"
 	StaderLunaX      = "terra17y9qkl8dfkeg4py7n0g5407emqnemc3yqk5rup"
 	StaderController = "terra1xacqx447msqp46qmv8k2sq6v5jh9fdj37az898"
+	StaderSCC        = "terra127vwnwgwdvq94ce4ws76ddh0c699jt40dznrn2"
 )
 
 func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
@@ -25,7 +26,7 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 	// Pull users from user_registry map.
 	// pub const USER_REGISTRY: Map<(&Addr, U64Key), UserPoolInfo> = Map::new("user_registry");
 	prefix := util.GeneratePrefix("user_registry")
-	delegatorAddr, err := sdk.AccAddressFromBech32(StaderDelegator)
+	delegatorAddr, err := sdk.AccAddressFromBech32(StaderPools)
 	if err != nil {
 		return nil, err
 	}
@@ -41,9 +42,7 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 
 	balances := make(util.SnapshotBalanceMap)
 	for _, address := range users {
-		if address == "terra1p0ghaqkuydjkgm33c40fmcfan6j705rma5wzjy" {
-			fmt.Println("address found")
-		}
+		// fmt.Println(address)
 
 		for i := 1; i < 3; i++ {
 			var poolUserInfo struct {
@@ -62,7 +61,7 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 				panic(err)
 			}
 
-			// fmt.Println(poolUserInfo)
+			fmt.Println(poolUserInfo)
 		}
 	}
 
@@ -81,6 +80,6 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 
 	// TODO: call get_user on SCC to cover pending rewards.
 
-	// bl.RegisterAddress(util.DenomLUNA, StaderPools)
+	bl.RegisterAddress(util.DenomLUNA, StaderPools)
 	return balances, nil
 }
