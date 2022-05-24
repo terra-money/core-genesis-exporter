@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/cosmos/cosmos-sdk/store"
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -19,10 +18,12 @@ import (
 )
 
 var (
-	DenomAUST = "aUST"
-	DenomUST  = "uusd"
-	DenomLUNA = "uluna"
-	AUST      = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
+	DenomAUST   = "aUST"
+	DenomUST    = "uusd"
+	DenomLUNA   = "uluna"
+	DenomBLUNA  = "ubluna"
+	DenomSTLUNA = "ustluna"
+	AUST        = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
 
 type allAccountsResponse struct {
@@ -206,12 +207,6 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 	}
 
 	return nil
-}
-
-// calculateIteratorStartKey calculates start key for an iterator -- useful in case where specific querier is not
-// available from within the contract itself (i.e. LP stakers list from staking contract)
-func calculateIteratorStartKey(store store.KVStore, ctx context.Context, q wasmtypes.QueryServer, contractAddress string, prefix []byte) ([]byte, error) {
-	return nil, nil
 }
 
 func AccAddressFromBase64(s string) (sdk.AccAddress, error) {

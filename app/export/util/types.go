@@ -13,6 +13,7 @@ func (b *SnapshotBalance) AddInto(i sdk.Int) {
 }
 
 type SnapshotBalanceMap map[string]SnapshotBalance
+type SnapshotBalanceAggregateMap map[string][]SnapshotBalance
 
 type Blacklist map[string][]string
 
