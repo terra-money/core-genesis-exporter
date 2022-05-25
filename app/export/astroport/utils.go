@@ -6,8 +6,8 @@ import "github.com/terra-money/core/app/export/util"
 func isTargetPool(p *pool) bool {
 	isOk := (p.Assets[0].AssetInfo.NativeToken != nil && p.Assets[0].AssetInfo.NativeToken.Denom == util.DenomLUNA) ||
 		(p.Assets[0].AssetInfo.NativeToken != nil && p.Assets[0].AssetInfo.NativeToken.Denom == util.DenomUST) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressBLUNA) ||
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressAUST) ||
+		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressBLUNA) ||
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressSTLUNA) ||
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressCLUNA) ||
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressPLUNA) ||
@@ -16,6 +16,7 @@ func isTargetPool(p *pool) bool {
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[0].AssetInfo.Token.ContractAddr == AddressLUNAX) ||
 		(p.Assets[1].AssetInfo.NativeToken != nil && p.Assets[1].AssetInfo.NativeToken.Denom == util.DenomLUNA) ||
 		(p.Assets[1].AssetInfo.NativeToken != nil && p.Assets[1].AssetInfo.NativeToken.Denom == util.DenomUST) ||
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressAUST) ||
 		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressBLUNA) ||
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressSTLUNA) ||
 		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressCLUNA) ||
