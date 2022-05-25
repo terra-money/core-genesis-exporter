@@ -29,8 +29,8 @@ func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
 	sum := sdk.NewInt(0)
 	for _, balances := range s {
 		for _, balance := range balances {
-			if !balance.Balance.IsNil() {
-				sum.Add(balance.Balance)
+			if !balance.Balance.IsNil() && balance.Denom == denom {
+				sum = sum.Add(balance.Balance)
 			}
 		}
 	}

@@ -291,7 +291,7 @@ func ToCsv(filePath string, headers []string, data [][]string) {
 func AlmostEqual(msg string, a types.Int, b types.Int, epsilon types.Int) error {
 	diff := a.Sub(b)
 	if !diff.Abs().LT(epsilon) {
-		return fmt.Errorf("%s difference: %s\n", msg, diff)
+		return fmt.Errorf("%s difference: %s, a: %s, b: %s\n", msg, diff, a, b)
 	}
 	return nil
 }

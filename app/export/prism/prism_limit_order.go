@@ -37,12 +37,10 @@ func ExportLimitOrderContract(
 	for _, order := range orders {
 		for _, denom := range PrismLimitOrderTokens {
 			if order.OfferAsset.Info.Cw20 == denom || order.OfferAsset.Info.Native == denom {
-				snapshot[order.Bidder] = []util.SnapshotBalance{
-					{
-						Denom:   denom,
-						Balance: order.OfferAsset.Amount,
-					},
-				}
+				snapshot[order.Bidder] = append(snapshot[order.Bidder], util.SnapshotBalance{
+					Denom:   denom,
+					Balance: order.OfferAsset.Amount,
+				})
 			}
 		}
 	}
@@ -59,7 +57,10 @@ func ExportLimitOrderContract(
 			return nil, err
 		}
 		sumOfSnapshot := snapshot.SumOfDenom(denom)
-		util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
+		err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
+		if err != nil {
+			return nil, err
+		}
 	}
 	return snapshot, nil
 }
@@ -77,7 +78,7 @@ type order struct {
 			Cw20   string `json:"cw20"`
 		}
 		Amount sdk.Int `json:"amount"`
-	} `json:"offset_asset"`
+	} `json:"offer_asset"`
 }
 
 func getAllOrders(ctx context.Context, q wasmtype.QueryServer) ([]order, error) {
