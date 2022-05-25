@@ -35,21 +35,20 @@ func ExportKujiraVault(app *terra.TerraApp, snapshot util.SnapshotBalanceAggrega
 		if err != nil {
 			panic(err)
 		}
-		if bid.Amount.IsZero() {
-			return false
-		}
+		// if bid.Amount.IsZero() {
+		// 	return false
+		// }
 
 		bidderAddr, err := util.AccAddressFromBase64(bid.Bidder)
 		if err != nil {
 			panic(err)
 		}
 
-		previousAmount := balances[bidderAddr.String()]
-		if previousAmount.IsNil() {
-			previousAmount = sdk.NewInt(0)
+		if balances[bidderAddr.String()].IsNil() {
+			balances[bidderAddr.String()] = bid.Amount
+		} else {
+			balances[bidderAddr.String()] = balances[bidderAddr.String()].Add(bid.Amount)
 		}
-
-		balances[bidderAddr.String()] = previousAmount.Add(bid.Amount)
 		return false
 	})
 
