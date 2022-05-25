@@ -29,13 +29,13 @@ var (
 	}
 )
 
-func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
+func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
 	markets, err := getMarkets(ctx, q)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	holdings := make(map[string]map[string]sdk.Int)
 	for _, market := range markets {
@@ -45,12 +45,12 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 		}
 		totalSupply, err := util.GetCW20TotalSupply(ctx, q, market.Etoken)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		accountBalances := make(map[string]sdk.Int)
 		err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, market.Etoken, accountBalances)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		holding := make(map[string]sdk.Int)
 		for k, v := range accountBalances {
@@ -61,16 +61,24 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 		// Assigning insurance fund to protocol admin
 		poolAddr, err := sdk.AccAddressFromBech32(EdgeProtocolPool)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		info, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), poolAddr)
 		if err != nil {
-			return nil, err
+			return err
 		}
 		holding[info.Admin] = market.InsuranceAmount.TruncateInt()
-
 		holdings[market.Underlying] = holding
 		bl.RegisterAddress(market.Underlying, EdgeProtocolPool)
+	}
+
+	for asset, holding := range holdings {
+		for addr, b := range holding {
+			snapshot[addr] = append(snapshot[addr], util.SnapshotBalance{
+				Denom:   asset,
+				Balance: b,
+			})
+		}
 	}
 
 	// header := []string{"token", "address", "amount"}
@@ -83,7 +91,7 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 	// 	}
 	// }
 	// util.ToCsv("/home/ec2-user/edge.csv", header, data)
-	return holdings, nil
+	return nil
 }
 
 func contains(a []string, i string) bool {

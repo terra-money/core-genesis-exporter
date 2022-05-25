@@ -35,64 +35,122 @@ type PrismState struct {
 
 func ExportContract(
 	app *terra.TerraApp,
-	partialPLunaHolding map[string]sdk.Int,
-	partialCLunaHolding map[string]sdk.Int,
+	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
-) (map[string]map[string]sdk.Int, error) {
+) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
-	// 1. Resolve pLUNA into cLUNA. pLuna can be swapped to cLuna 1:1
-	pLunaHolding, err := resolvePLunaHoldings(ctx, q, app.WasmKeeper, partialPLunaHolding, bl)
+	// 1. Resolve pLUNA in PrismSwap and add to snapshot
+	pLunaHolding, err := resolvePLunaHoldings(ctx, q, app.WasmKeeper, bl)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	cLunaHoldingInVault := pLunaHolding
+	for a, b := range pLunaHolding {
+		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
+			Denom:   PrismPLuna,
+			Balance: b,
+		})
+	}
 
 	// 2. Resolve cLUNA in PrismSwap - cLuna / PRISM pair
 	cLunaHoldingInPair, err := resolveCw20LpHoldings(ctx, q, app.WasmKeeper, PrismCLuna, PrismSwapCLunaPrismLP, PrismSwapCLunaPrism, bl)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// 3. Get all direct holders of cLUNA
 	cLunaHolders := make(map[string]sdk.Int)
 	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, PrismCLuna, cLunaHolders)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	// 4. Merge all cLUNA holdings and dedupliate known contract holdings
-	cLunaHolders = util.MergeMaps(cLunaHolders, cLunaHoldingInVault, cLunaHoldingInPair, partialCLunaHolding)
+	cLunaHolders = util.MergeMaps(cLunaHolders, cLunaHoldingInPair)
 	bl.RegisterAddress(PrismCLuna, PrismVault)
-	for _, b := range bl.GetAddressesByDenom(PrismCLuna) {
-		if !cLunaHolders[b].IsNil() {
-			delete(cLunaHolders, b)
-		}
-	}
 
-	// Audit to make sure everything adds up
-	// Total supply of cLuna is ~100000 different from pLuna for some reason
-	cLunatotalSupply, err := util.GetCW20TotalSupply(ctx, q, PrismCLuna)
-	if err != nil {
-		return nil, err
-	}
-	err = util.AlmostEqual("cLuna supply", cLunatotalSupply, util.Sum(cLunaHolders), sdk.NewInt(200000))
-	if err != nil {
-		return nil, err
+	// 5. Accumulate everything into snapshot
+	for a, b := range cLunaHolders {
+		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
+			Denom:   PrismCLuna,
+			Balance: b,
+		})
 	}
 
 	prismState, err := getPrismVaultState(ctx, q)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	err = checkUnbondingCLuna(ctx, q, prismState, cLunaHolders, make(map[string]sdk.Int))
+	unbondedLunaHolding := make(map[string]sdk.Int)
+	err = checkUnbondingCLuna(ctx, q, prismState, cLunaHolders, unbondedLunaHolding)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return nil, nil
 
+	lunaInVault, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, PrismVault)
+	if err != nil {
+		return err
+	}
+	util.AlmostEqual("unbonded luna prism", lunaInVault, util.Sum(unbondedLunaHolding), sdk.NewInt(100000))
+
+	for a, b := range unbondedLunaHolding {
+		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
+			Denom:   util.DenomLUNA,
+			Balance: b,
+		})
+	}
+	bl.RegisterAddress(util.DenomLUNA, PrismVault)
+	return nil
+
+}
+
+func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) error {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	snapshot.ApplyBlackList(bl)
+	swapPLunaToCLuna(snapshot)
+	snapshot.ApplyBlackList(bl)
+	cLunaSupply, err := util.GetCW20TotalSupply(ctx, q, util.CLuna)
+	if err != nil {
+		return err
+	}
+	err = util.AlmostEqual("cLuna doesn't match", cLunaSupply, snapshot.SumOfDenom(util.CLuna), sdk.NewInt(200000))
+	if err != nil {
+		return err
+	}
+
+	prismState, err := getPrismVaultState(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	for _, sbs := range snapshot {
+		for i, sb := range sbs {
+			if sb.Denom == util.CLuna {
+				sbs[i] = util.SnapshotBalance{
+					Denom:   util.DenomLUNA,
+					Balance: prismState.ExchangeRate.MulInt(sb.Balance).TruncateInt(),
+				}
+			}
+		}
+	}
+	fmt.Println(snapshot.SumOfDenom(util.DenomLUNA))
+	return nil
+}
+
+func swapPLunaToCLuna(snapshot util.SnapshotBalanceAggregateMap) {
+	for _, sbs := range snapshot {
+		for i, sb := range sbs {
+			if sb.Denom == PrismPLuna {
+				sbs[i] = util.SnapshotBalance{
+					Denom:   util.CLuna,
+					Balance: sb.Balance,
+				}
+			}
+		}
+	}
 }
 
 func resolveCw20LpHoldings(
@@ -125,14 +183,11 @@ func resolveCw20LpHoldings(
 	return holdingsInPool, nil
 }
 
-// Resolves pLUNA holdings in PRISM swap + pLuna ownership
-// 1. For astroport LP, it should be included in partialPLunaHolding passed from the astroport export)
-// 2. For edge deposits, it should also be included in partialPLunaHolding
+// Resolves pLUNA holdings in PRISM swap
 func resolvePLunaHoldings(
 	ctx context.Context,
 	q wasmtypes.QueryServer,
 	k wasmkeeper.Keeper,
-	partialPLunaHolding map[string]sdk.Int,
 	bl *util.Blacklist,
 ) (map[string]sdk.Int, error) {
 	pLunaHoldings := make(map[string]sdk.Int)
@@ -140,17 +195,14 @@ func resolvePLunaHoldings(
 	if err != nil {
 		return nil, err
 	}
-
-	pLunaHoldingsInPair, err := resolveCw20LpHoldings(ctx, q, k, PrismPLuna, PrismSwapCLunaPrismLP, PrismSwapPLunaPrism, bl)
+	pLunaHoldingsInPair, err := resolveCw20LpHoldings(ctx, q, k, PrismPLuna, PrismSwapPLunaPrismLP, PrismSwapPLunaPrism, bl)
 	if err != nil {
 		return nil, err
 	}
 
-	// Merge and deduplicate previously resolved pLuna holdings
-	pLunaHoldings = util.MergeMaps(pLunaHoldings, partialPLunaHolding, pLunaHoldingsInPair)
-	for _, a := range bl.GetAddressesByDenom(PrismPLuna) {
-		delete(pLunaHoldings, a)
-	}
+	// Merge and deduplicate pLuna in pair contract
+	pLunaHoldings = util.MergeMaps(pLunaHoldings, pLunaHoldingsInPair)
+	delete(pLunaHoldings, PrismSwapPLunaPrism)
 
 	pLunaSupply, err := util.GetCW20TotalSupply(ctx, q, PrismPLuna)
 	if err != nil {

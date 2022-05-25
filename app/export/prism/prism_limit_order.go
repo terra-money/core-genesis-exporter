@@ -25,15 +25,15 @@ var (
 
 func ExportLimitOrderContract(
 	app *terra.TerraApp,
+	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
-) (util.SnapshotBalanceAggregateMap, error) {
+) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	orders, err := getAllOrders(ctx, q)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for _, order := range orders {
 		for _, denom := range PrismLimitOrderTokens {
 			if order.OfferAsset.Info.Cw20 == denom || order.OfferAsset.Info.Native == denom {
@@ -47,6 +47,7 @@ func ExportLimitOrderContract(
 
 	// Audit
 	for _, denom := range PrismLimitOrderTokens {
+		bl.RegisterAddress(denom, PrismLimitOrder)
 		var contractBalance sdk.Int
 		if strings.Contains(denom, "terra") {
 			contractBalance, err = util.GetCW20Balance(ctx, q, denom, PrismLimitOrder)
@@ -54,15 +55,15 @@ func ExportLimitOrderContract(
 			contractBalance, err = util.GetNativeBalance(ctx, app.BankKeeper, denom, PrismLimitOrder)
 		}
 		if err != nil {
-			return nil, err
+			return err
 		}
 		sumOfSnapshot := snapshot.SumOfDenom(denom)
 		err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return snapshot, nil
+	return nil
 }
 
 type orderRes struct {

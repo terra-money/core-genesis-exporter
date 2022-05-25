@@ -25,6 +25,7 @@ var (
 	DenomLUNA   = "uluna"
 	DenomBLUNA  = "ubluna"
 	DenomSTLUNA = "ustluna"
+	CLuna       = "terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"
 	AUST        = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
 

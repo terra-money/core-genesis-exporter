@@ -15,6 +15,7 @@ func (b *SnapshotBalance) AddInto(i sdk.Int) {
 type SnapshotBalanceMap map[string]SnapshotBalance
 type SnapshotBalanceAggregateMap map[string][]SnapshotBalance
 
+// map[denom][]address
 type Blacklist map[string][]string
 
 func (bl Blacklist) RegisterAddress(denom string, address string) {
@@ -35,4 +36,29 @@ func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
 		}
 	}
 	return sum
+}
+
+func (s SnapshotBalanceAggregateMap) Add(balances map[string]sdk.Int, denom string) {
+	for a, b := range balances {
+		s[a] = append(s[a], SnapshotBalance{
+			Denom:   denom,
+			Balance: b,
+		})
+	}
+}
+
+func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {
+	for denom, addrList := range bl {
+		for _, addr := range addrList {
+			for i, snapshotBalance := range s[addr] {
+				if snapshotBalance.Denom == denom {
+					// Remove by setting to 0
+					s[addr][i] = SnapshotBalance{
+						Denom:   snapshotBalance.Denom,
+						Balance: sdk.NewInt(0),
+					}
+				}
+			}
+		}
+	}
 }
