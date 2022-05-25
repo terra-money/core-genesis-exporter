@@ -24,8 +24,7 @@ func ExportLunaX(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceM
 	logger.Info("fetching LunaX holders and balances...")
 
 	var lunaxBalances = make(util.BalanceMap)
-
-	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, LunaX, balances); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, LunaX, lunaxBalances); err != nil {
 		return nil, err
 	}
 

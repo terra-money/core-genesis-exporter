@@ -13,11 +13,10 @@ import (
 var (
 	marsMarket  = "terra19dtgj9j5j7kyf3pmejqv8vzfpxtejaypgzkz5u"
 	maLunaToken = "terra1x4rrkxx5pyuce32wsdn8ypqnpx8n27klnegv0d"
+	maUstToken  = "terra1cuku0vggplpgfxegdrenp302km26symjk4xxaf"
 	// TODO: assign safety fund to mars multisig
-	marsSafetyFund    = "terra16zrcxq6pyq7uxhcmgfe68p09xh6g4wk6yw2f70"
-	marsLunaLiquidity = ""
-	marsUSTLiquidity  = ""
-	marsFields        = []string{
+	marsSafetyFund = "terra16zrcxq6pyq7uxhcmgfe68p09xh6g4wk6yw2f70"
+	marsFields     = []string{
 		//marsLunaUstField
 		"terra1kztywx50wv38r58unxj9p6k3pgr2ux6w5x68md",
 		// marsAncUstField
@@ -35,22 +34,42 @@ var (
 // 2. Find total supply of maTokens
 // 3. Find balance of assets in bank
 // 4. Assign accounts with assets proportionally
-func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util.Blacklist) (map[string]sdk.Int, error) {
+func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+	err := ExportMarsDepositLuna(app, snapshot, bl)
+	if err != nil {
+		return err
+	}
+	err = ExportMarsDepositUST(app, snapshot, bl)
+	if err != nil {
+		return err
+	}
+	err = ExportMarsSafetyFund(app, snapshot, bl)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func ExportMarsDepositLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
 	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
 
 	var balances = make(map[string]sdk.Int)
 	logger.Info("fetching MARS liquidity (LUNA)...")
 
 	if err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, maLunaToken, balances); err != nil {
-		return nil, err
+		return err
 	}
 
 	marsLunaBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, marsMarket)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	totalSupply, err := util.GetCW20TotalSupply(ctx, q, maLunaToken)
+	if err != nil {
+		return err
+	}
 	fmt.Printf("total supply of maToken: %v\n", totalSupply)
 
 	sum := sdk.NewInt(0)
@@ -67,18 +86,20 @@ func ExportMarsDepositLuna(app *terra.TerraApp, q wasmtypes.QueryServer, bl *uti
 
 	// Black listing Mars Market Contract for deduplication later
 	bl.RegisterAddress(util.DenomLUNA, marsMarket)
-	return balances, nil
+	snapshot.Add(balances, util.DenomLUNA)
+	return nil
 }
 
-func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util.Blacklist) (map[string]sdk.Int, error) {
+func ExportMarsDepositUST(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
 	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
 
 	var balances = make(util.BalanceMap)
 	logger.Info("fetching MARS liquidity (UST)...")
 
-	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, marsUSTLiquidity, balances); err != nil {
-		return nil, err
+	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, maUstToken, balances); err != nil {
+		return err
 	}
 
 	// get luna liquidity <> luna er
@@ -89,7 +110,7 @@ func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util
 		ContractAddress: marsMarket,
 		QueryMsg:        []byte("{\"market\": {\"asset\": {\"native\": {\"denom\": \"uusd\"}}}}"),
 	}, &lunaMarketState); err != nil {
-		return nil, err
+		return err
 	}
 
 	// balance * ER
@@ -99,7 +120,26 @@ func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util
 
 	// Black listing Mars Market Contract for deduplication later
 	bl.RegisterAddress(util.DenomUST, marsMarket)
-	return balances, nil
+	snapshot.Add(balances, util.DenomUST)
+	return nil
+}
+
+func ExportMarsSafetyFund(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+	ctx := util.PrepCtx(app)
+	balance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsSafetyFund)
+	if err != nil {
+		return err
+	}
+	info, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), sdk.AccAddress(marsSafetyFund))
+	if err != nil {
+		return err
+	}
+	snapshot[info.Admin] = append(snapshot[info.Admin], util.SnapshotBalance{
+		Denom:   util.DenomUST,
+		Balance: balance,
+	})
+	bl.RegisterAddress(util.DenomUST, marsSafetyFund)
+	return nil
 }
 
 // Get eventual ownership of LP tokens in the Field of Mars (leveraged yield farming) contracts

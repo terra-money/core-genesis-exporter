@@ -8,6 +8,7 @@ import (
 	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/lido"
+	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/stader"
 	util "github.com/terra-money/core/app/export/util"
 
@@ -23,9 +24,9 @@ var (
 		util.DenomLUNA,
 		lido.BLuna,
 		lido.StLuna,
-		stader.StaderLunaX,
+		stader.LunaX,
 		// pLuna
-		"terra1tlgelulz9pdkhls6uglfn5lmxarx7f2gxtdzh2",
+		prism.PrismPLuna,
 	}
 )
 
@@ -69,7 +70,7 @@ func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateM
 		}
 		holding[info.Admin] = market.InsuranceAmount.TruncateInt()
 		holdings[market.Underlying] = holding
-		bl.RegisterAddress(market.Underlying, EdgeProtocolPool)
+		bl.RegisterAddress(util.MapContractToDenom(market.Underlying), EdgeProtocolPool)
 	}
 
 	for asset, holding := range holdings {

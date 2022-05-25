@@ -5,9 +5,8 @@ import (
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
-	util "github.com/terra-money/core/app/export/util"
+	"github.com/terra-money/core/app/export/util"
 
 	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
@@ -48,7 +47,7 @@ func ExportContract(
 	}
 	for a, b := range pLunaHolding {
 		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
-			Denom:   PrismPLuna,
+			Denom:   util.DenomPLUNA,
 			Balance: b,
 		})
 	}
@@ -68,12 +67,12 @@ func ExportContract(
 
 	// 4. Merge all cLUNA holdings and dedupliate known contract holdings
 	cLunaHolders = util.MergeMaps(cLunaHolders, cLunaHoldingInPair)
-	bl.RegisterAddress(PrismCLuna, PrismVault)
+	bl.RegisterAddress(util.MapContractToDenom(PrismCLuna), PrismVault)
 
 	// 5. Accumulate everything into snapshot
 	for a, b := range cLunaHolders {
 		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
-			Denom:   PrismCLuna,
+			Denom:   util.DenomCLUNA,
 			Balance: b,
 		})
 	}
@@ -112,11 +111,11 @@ func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMa
 	snapshot.ApplyBlackList(bl)
 	swapPLunaToCLuna(snapshot)
 	snapshot.ApplyBlackList(bl)
-	cLunaSupply, err := util.GetCW20TotalSupply(ctx, q, util.CLuna)
+	cLunaSupply, err := util.GetCW20TotalSupply(ctx, q, PrismCLuna)
 	if err != nil {
 		return err
 	}
-	err = util.AlmostEqual("cLuna doesn't match", cLunaSupply, snapshot.SumOfDenom(util.CLuna), sdk.NewInt(200000))
+	err = util.AlmostEqual("cLuna doesn't match", cLunaSupply, snapshot.SumOfDenom(util.DenomCLUNA), sdk.NewInt(200000))
 	if err != nil {
 		return err
 	}
@@ -128,7 +127,7 @@ func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMa
 
 	for _, sbs := range snapshot {
 		for i, sb := range sbs {
-			if sb.Denom == util.CLuna {
+			if sb.Denom == util.DenomCLUNA {
 				sbs[i] = util.SnapshotBalance{
 					Denom:   util.DenomLUNA,
 					Balance: prismState.ExchangeRate.MulInt(sb.Balance).TruncateInt(),
@@ -143,9 +142,9 @@ func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMa
 func swapPLunaToCLuna(snapshot util.SnapshotBalanceAggregateMap) {
 	for _, sbs := range snapshot {
 		for i, sb := range sbs {
-			if sb.Denom == PrismPLuna {
+			if sb.Denom == util.DenomPLUNA {
 				sbs[i] = util.SnapshotBalance{
-					Denom:   util.CLuna,
+					Denom:   util.DenomCLUNA,
 					Balance: sb.Balance,
 				}
 			}
@@ -179,7 +178,7 @@ func resolveCw20LpHoldings(
 	for acc, amount := range lpHoldings {
 		holdingsInPool[acc] = amount.Mul(balanceInPool).Quo(lpSupply)
 	}
-	bl.RegisterAddress(token, pair)
+	bl.RegisterAddress(util.MapContractToDenom(token), pair)
 	return holdingsInPool, nil
 }
 

@@ -26,86 +26,145 @@ type LidoState struct {
 	TotalBondBLuna     sdk.Int `json:"total_bond_bluna_amount"`
 }
 
-func ExportLidoContract(
+func ExportBSTLunaHolders(
 	app *terra.TerraApp,
-	stLunaBalances map[string]sdk.Int,
-	bLunaBalances map[string]sdk.Int,
+	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
-) (util.SnapshotBalanceMap, util.SnapshotBalanceMap, error) {
+) error {
 	ctx := util.PrepCtx(app)
-	q := util.PrepWasmQueryServer(app)
-	lidoState, err := getExchangeRates(ctx, q)
-	if err != nil {
-		return nil, nil, err
-	}
+	// q := util.PrepWasmQueryServer(app)
 
 	bondedStLunaHolders := make(map[string]sdk.Int)
-	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, StLuna, bondedStLunaHolders)
+	err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, StLuna, bondedStLunaHolders)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	// fmt.Printf("Sum of bonded stLuna: %s\n", util.Sum(bondedStLunaHolders))
+	snapshot.Add(bondedStLunaHolders, util.DenomSTLUNA)
 
 	bondedBLunaHolders := make(map[string]sdk.Int)
 	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, BLuna, bondedBLunaHolders)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	// fmt.Printf("Sum of bonded bLuna: %s\n", util.Sum(bondedBLunaHolders))
+	snapshot.Add(bondedBLunaHolders, util.DenomBLUNA)
 
+	return nil
+}
+
+func ResolveLidoLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) error {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	lidoState, err := getExchangeRates(ctx, q)
+	if err != nil {
+		return err
+	}
+	snapshot.ApplyBlackList(bl)
+
+	for _, sbs := range snapshot {
+		for i, sb := range sbs {
+			if sb.Denom == util.DenomBLUNA {
+				sbs[i] = util.SnapshotBalance{
+					Denom:   util.DenomLUNA,
+					Balance: lidoState.StLunaExchangeRate.MulInt(sb.Balance).TruncateInt(),
+				}
+			}
+			if sb.Denom == util.DenomSTLUNA {
+				sbs[i] = util.SnapshotBalance{
+					Denom:   util.DenomLUNA,
+					Balance: lidoState.BLunaExchangeRate.MulInt(sb.Balance).TruncateInt(),
+				}
+			}
+		}
+	}
 	unbondingBluna, unbondingStLuna, err := getUnbondingTokens(ctx, app.WasmKeeper)
 	if err != nil {
-		return nil, nil, err
+		return nil
 	}
-	// fmt.Printf("Sum of unbonding stLuna: %s\n", util.Sum(unbondingStLuna))
-	// fmt.Printf("Sum of unbonding bLuna: %s\n", util.Sum(unbondingBluna))
+	unbondingLuna := util.MergeMaps(applyExchangeRates(unbondingBluna, lidoState.BLunaExchangeRate), applyExchangeRates(unbondingStLuna, lidoState.StLunaExchangeRate))
+	bl.RegisterAddress(util.DenomLUNA, LidoHub)
+	snapshot.Add(unbondingLuna, util.DenomLUNA)
+	return nil
+}
 
-	// Merge with previously calculated from LPs and vaults etc
-	stLunaBalances = util.MergeMaps(stLunaBalances, bondedStLunaHolders, unbondingStLuna)
-	bLunaBalances = util.MergeMaps(bLunaBalances, bondedBLunaHolders, unbondingBluna)
+func ExportLidoRewards(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	snapshot.ApplyBlackList(*bl)
 
-	// Deduplicate contracts ownership from previous exports
-	for _, b := range (*bl)[StLuna] {
-		stLunaBalances[b] = sdk.NewInt(0)
+	bondedBLunaHolders := make(map[string]sdk.Int)
+	bondedStLunaHolders := make(map[string]sdk.Int)
+
+	for acc, sbs := range snapshot {
+		for _, sb := range sbs {
+			if sb.Denom == util.DenomBLUNA {
+				if bondedBLunaHolders[acc].IsNil() {
+					bondedBLunaHolders[acc] = sb.Balance
+				} else {
+					bondedBLunaHolders[acc] = bondedBLunaHolders[acc].Add(sb.Balance)
+				}
+			}
+			if sb.Denom == util.DenomSTLUNA {
+				if bondedStLunaHolders[acc].IsNil() {
+					bondedStLunaHolders[acc] = sb.Balance
+				} else {
+					bondedStLunaHolders[acc] = bondedStLunaHolders[acc].Add(sb.Balance)
+				}
+			}
+		}
 	}
-	for _, b := range (*bl)[BLuna] {
-		bLunaBalances[b] = sdk.NewInt(0)
-	}
 
-	lunaBalance := util.MergeMaps(
-		applyExchangeRates(stLunaBalances, lidoState.StLunaExchangeRate),
-		applyExchangeRates(bLunaBalances, lidoState.BLunaExchangeRate),
-	)
+	lidoState, err := getExchangeRates(ctx, q)
+	if err != nil {
+		return err
+	}
 
 	stLunaTotalSupply, err := util.GetCW20TotalSupply(ctx, q, StLuna)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	bLunaTotalSupply, err := util.GetCW20TotalSupply(ctx, q, BLuna)
 	if err != nil {
-		return nil, nil, err
+		return err
+	}
+
+	err = util.AlmostEqual("stLUNA", snapshot.SumOfDenom(util.DenomSTLUNA), stLunaTotalSupply, sdk.NewInt(100000))
+	if err != nil {
+		fmt.Println(err)
+	}
+	err = util.AlmostEqual("bLUNA", snapshot.SumOfDenom(util.DenomBLUNA), bLunaTotalSupply, sdk.NewInt(100000))
+	if err != nil {
+		fmt.Println(err)
 	}
 
 	lunaRewards, err := getLunaRewards(ctx, app.BankKeeper)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
-	// fmt.Printf("Sum of luna rewards: %s\n", lunaRewards)
+
 	stLunaRewards := lunaRewards.Mul(lidoState.TotalBondStLuna.Quo(lidoState.TotalBondStLuna.Add(lidoState.TotalBondBLuna)))
 	bLunaRewards := lunaRewards.Mul(lidoState.TotalBondBLuna.Quo(lidoState.TotalBondStLuna.Add(lidoState.TotalBondBLuna)))
 
 	ustRewards, err := getUstRewards(ctx, app.BankKeeper)
 	if err != nil {
-		return nil, nil, err
+		return err
 	}
 	stLunaUstRewards := ustRewards.Mul(lidoState.TotalBondStLuna.Quo(lidoState.TotalBondStLuna.Add(lidoState.TotalBondBLuna)))
 	bLunaUstRewards := ustRewards.Mul(lidoState.TotalBondBLuna.Quo(lidoState.TotalBondStLuna.Add(lidoState.TotalBondBLuna)))
 
+	lunaBalance := make(map[string]sdk.Int)
 	for k, _ := range bondedStLunaHolders {
-		lunaBalance[k] = lunaBalance[k].Add(stLunaRewards.Mul(bondedStLunaHolders[k].Quo(stLunaTotalSupply)))
+		if lunaBalance[k].IsNil() {
+			lunaBalance[k] = stLunaRewards.Mul(bondedStLunaHolders[k].Quo(stLunaTotalSupply))
+		} else {
+			lunaBalance[k] = lunaBalance[k].Add(stLunaRewards.Mul(bondedStLunaHolders[k].Quo(stLunaTotalSupply)))
+		}
 	}
 	for k, _ := range bondedBLunaHolders {
-		lunaBalance[k] = lunaBalance[k].Add(bLunaRewards.Mul(bondedBLunaHolders[k].Quo(bLunaTotalSupply)))
+		if lunaBalance[k].IsNil() {
+			lunaBalance[k] = bLunaRewards.Mul(bondedBLunaHolders[k].Quo(bLunaTotalSupply))
+		} else {
+			lunaBalance[k] = lunaBalance[k].Add(bLunaRewards.Mul(bondedBLunaHolders[k].Quo(bLunaTotalSupply)))
+		}
 	}
 
 	ustBalance := make(map[string]util.SnapshotBalance)
@@ -137,39 +196,7 @@ func ExportLidoContract(
 		userUstBalance := ustBalance[k]
 		(&userUstBalance).AddInto(ustToAdd)
 	}
-
-	finalLunaBalance := make(map[string]util.SnapshotBalance)
-	sumOfLunaBalance := sdk.NewInt(0)
-	for k, b := range lunaBalance {
-		finalLunaBalance[k] = util.SnapshotBalance{
-			Denom:   util.DenomLUNA,
-			Balance: b,
-		}
-		sumOfLunaBalance = sumOfLunaBalance.Add(b)
-	}
-
-	fmt.Printf("%s\n", sumOfLunaBalance)
-
-	// TODO: Need to verify that the total delegations + rewards = sumOfLunaBalances
-
-	// lidoHubAddr, _ := sdk.AccAddressFromBech32(LidoHub)
-	// totalDelegations := sdk.NewInt(0)
-	// app.StakingKeeper.IterateDelegations(sdk.UnwrapSDKContext(ctx), lidoHubAddr, func(index int64, del stakingtypes.DelegationI) (stop bool) {
-	// 	totalDelegations = totalDelegations.Add(del.GetShares().TruncateInt())
-	// 	return false
-	// })
-
-	// unbondingDelegations := app.StakingKeeper.GetAllUnbondingDelegations(sdk.UnwrapSDKContext(ctx), lidoHubAddr)
-	// totalUnbonding := sdk.NewInt(0)
-	// for _, u := range unbondingDelegations {
-	// 	for _, e := range u.Entries {
-	// 		totalUnbonding = totalUnbonding.Add(e.Balance)
-	// 	}
-	// }
-
-	// fmt.Printf("difference: %s\n", sumOfLunaBalance.Sub(lunaRewards).Sub(totalDelegations))
-
-	return finalLunaBalance, ustBalance, nil
+	return nil
 }
 
 func getExchangeRates(ctx context.Context, q wasmtypes.QueryServer) (LidoState, error) {

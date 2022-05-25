@@ -53,35 +53,28 @@ type Vault struct {
 // 2. Individual interest vaults per user (InkVault)
 func ExportContract(
 	app *terra.TerraApp,
+	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
-) (util.SnapshotBalanceMap, error) {
+) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	deposits, err := getAllDeposits(ctx, q)
 	if err != nil {
-		fmt.Println(err)
-		return nil, err
+		return err
 	}
-	// fmt.Printf("deposits: %d\n", len(deposits))
-	// fmt.Printf("Sum of deposits: %s\n", util.Sum(deposits))
 
 	partyInfos, err := getAllParties(ctx, q)
 	if err != nil {
-		fmt.Println(err)
-		return nil, err
+		return err
 	}
-	// fmt.Printf("parties: %d\n", len(partyInfos))
 
 	vaults, err := getAllVaults(ctx, q)
 	if err != nil {
-		fmt.Println(err)
-		return nil, err
+		return err
 	}
-	// fmt.Printf("vaults: %d\n", len(vaults))
 
 	for _, party := range partyInfos {
 		if !deposits[party.Info.PartyAddr].IsNil() {
-			// fmt.Printf("removed party: %s ", deposits[party.Info.PartyAddr])
 			deposits[party.Info.PartyAddr] = sdk.NewInt(0)
 		}
 		sum := sdk.NewInt(0)
@@ -93,10 +86,10 @@ func ExportContract(
 				deposits[dp.Address] = deposits[dp.Address].Add(dp.Amount)
 			}
 		}
-		// fmt.Printf("added: %s\n", sum)
 	}
 
 	for _, vault := range vaults {
+		bl.RegisterAddress(util.DenomAUST, vault.VaultAddr)
 		if !deposits[vault.VaultAddr].IsNil() {
 			deposits[vault.VaultAddr] = sdk.NewInt(0)
 		}
@@ -107,28 +100,21 @@ func ExportContract(
 		}
 	}
 
-	// fmt.Printf("Sum of deposits: %s\n", util.Sum(deposits))
 	totalAUstLocked, err := getTotalAUstLocked(ctx, q, vaults)
 	if err != nil {
-		fmt.Println(err)
-		return nil, err
+		return err
 	}
 	totalDeposits := util.Sum(deposits)
-	balance := make(util.SnapshotBalanceMap)
 
-	// headers := []string{"address", "deposits", "aust"}
-	// var data [][]string
 	for addr, amount := range deposits {
 		aUstBalance := amount.Mul(totalAUstLocked).Quo(totalDeposits)
-		balance[addr] = util.SnapshotBalance{
-			Denom:   util.AUST,
+		snapshot[addr] = append(snapshot[addr], util.SnapshotBalance{
+			Denom:   util.DenomAUST,
 			Balance: aUstBalance,
-		}
-		// data = append(data, []string{addr, amount.String(), aUstBalance.String()})
+		})
 	}
-	// util.ToCsv("/home/ec2-user/ink.csv", headers, data)
-
-	return balance, nil
+	bl.RegisterAddress(util.DenomAUST, InkAUstVault)
+	return nil
 }
 
 func getAllDeposits(ctx context.Context, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {

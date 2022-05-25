@@ -7,9 +7,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
-	util "github.com/terra-money/core/app/export/util"
-
-	// wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
+	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/x/wasm/types"
 	wasmtype "github.com/terra-money/core/x/wasm/types"
 )
@@ -34,20 +32,25 @@ func ExportLimitOrderContract(
 	if err != nil {
 		return err
 	}
+	holdings := make(map[string]map[string]sdk.Int)
 	for _, order := range orders {
 		for _, denom := range PrismLimitOrderTokens {
 			if order.OfferAsset.Info.Cw20 == denom || order.OfferAsset.Info.Native == denom {
-				snapshot[order.Bidder] = append(snapshot[order.Bidder], util.SnapshotBalance{
-					Denom:   denom,
-					Balance: order.OfferAsset.Amount,
-				})
+				if holdings[denom] == nil {
+					holdings[denom] = make(map[string]sdk.Int)
+				}
+				if holdings[denom][order.Bidder].IsNil() {
+					holdings[denom][order.Bidder] = order.OfferAsset.Amount
+				} else {
+					holdings[denom][order.Bidder] = holdings[denom][order.Bidder].Add(order.OfferAsset.Amount)
+				}
 			}
 		}
 	}
 
 	// Audit
 	for _, denom := range PrismLimitOrderTokens {
-		bl.RegisterAddress(denom, PrismLimitOrder)
+		bl.RegisterAddress(util.MapContractToDenom(denom), PrismLimitOrder)
 		var contractBalance sdk.Int
 		if strings.Contains(denom, "terra") {
 			contractBalance, err = util.GetCW20Balance(ctx, q, denom, PrismLimitOrder)
@@ -57,11 +60,11 @@ func ExportLimitOrderContract(
 		if err != nil {
 			return err
 		}
-		sumOfSnapshot := snapshot.SumOfDenom(denom)
-		err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
+		err = util.AlmostEqual(denom, contractBalance, util.Sum(holdings[denom]), sdk.NewInt(10000))
 		if err != nil {
 			return err
 		}
+		snapshot.Add(holdings[denom], util.MapContractToDenom(denom))
 	}
 	return nil
 }

@@ -58,9 +58,9 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
-	snapshot := make(map[string]map[string]sdk.Int)
-	snapshot[util.AUST] = make(map[string]sdk.Int)
-	snapshot[util.DenomUST] = make(map[string]sdk.Int)
+	holdings := make(map[string]map[string]sdk.Int)
+	holdings[util.AUST] = make(map[string]sdk.Int)
+	holdings[util.DenomUST] = make(map[string]sdk.Int)
 
 	// Used for final audit
 	sumAUst := sdk.NewInt(0)
@@ -84,25 +84,25 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[str
 		}
 
 		for w, a := range tokenBalances {
-			if snapshot[util.AUST][w].IsNil() {
-				snapshot[util.AUST][w] = a.Mul(config.AUstAmount).Quo(totalSupply)
+			if holdings[util.AUST][w].IsNil() {
+				holdings[util.AUST][w] = a.Mul(config.AUstAmount).Quo(totalSupply)
 			} else {
-				snapshot[util.AUST][w] = snapshot[util.AUST][w].Add(a.Mul(config.AUstAmount).Quo(totalSupply))
+				holdings[util.AUST][w] = holdings[util.AUST][w].Add(a.Mul(config.AUstAmount).Quo(totalSupply))
 			}
-			if snapshot[util.DenomUST][w].IsNil() {
-				snapshot[util.DenomUST][w] = a.Mul(config.UstAmount).Quo(totalSupply)
+			if holdings[util.DenomUST][w].IsNil() {
+				holdings[util.DenomUST][w] = a.Mul(config.UstAmount).Quo(totalSupply)
 			} else {
-				snapshot[util.DenomUST][w] = snapshot[util.DenomUST][w].Add(a.Mul(config.UstAmount).Quo(totalSupply))
+				holdings[util.DenomUST][w] = holdings[util.DenomUST][w].Add(a.Mul(config.UstAmount).Quo(totalSupply))
 			}
 		}
 	}
 
-	// actualSumAUst := util.Sum(snapshot[util.AUST])
-	// actualSumUst := util.Sum(snapshot[util.DenomUST])
+	// actualSumAUst := util.Sum(holdings[util.AUST])
+	// actualSumUst := util.Sum(holdings[util.DenomUST])
 	// fmt.Printf("aUST expected: %s, actual: %s, difference: %s\n", sumAUst, actualSumAUst, sumAUst.Sub(actualSumAUst))
 	// fmt.Printf("UST expected:  %s, actual: %s, difference: %s\n", sumUst, actualSumUst, sumUst.Sub(actualSumUst))
 
-	return snapshot, nil
+	return holdings, nil
 }
 
 func getConfig(ctx context.Context, q wasmtypes.QueryServer, k wasmtypes.BankKeeper, pool string) (PylonPoolConfig, error) {

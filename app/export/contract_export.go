@@ -6,7 +6,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/apollo"
-	"github.com/terra-money/core/app/export/astroport"
+	"github.com/terra-money/core/app/export/lido"
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/util"
@@ -23,8 +23,8 @@ func ExportContracts(app *terra.TerraApp) {
 
 	//fmt.Println(ExportSuberra(app))
 	//fmt.Println(alice.ExportAlice(app, bl))
-	compoundedLps, err := exportCompounders(app)
-	astroport.ExportAstroportLP(app, bl, compoundedLps)
+	// compoundedLps, err := exportCompounders(app)
+	// astroport.ExportAstroportLP(app, bl, compoundedLps)
 	// fmt.Println(kujira.ExportKujiraStaking(app, &bl))
 	// fmt.Println(alice.ExportAlice(app, bl))
 	// err = edge.ExportContract(app, snapshot, &bl)
@@ -32,14 +32,18 @@ func ExportContracts(app *terra.TerraApp) {
 	// 	panic(err)
 	// }
 
-	// err = lido.ExportBSTLunaHolders(app, snapshot, &bl)
-	// if err != nil {
-	// 	panic(err)
-	// }
-	// err = lido.ExportLidoRewards(app, snapshot, &bl)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	err = lido.ExportBSTLunaHolders(app, snapshot, &bl)
+	if err != nil {
+		panic(err)
+	}
+	err = lido.ExportLidoRewards(app, snapshot, &bl)
+	if err != nil {
+		panic(err)
+	}
+	err = lido.ResolveLidoLuna(app, snapshot, bl)
+	if err != nil {
+		panic(err)
+	}
 
 	// ink.ExportContract(app, &bl)
 	// err = aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), snapshot, &bl)

@@ -30,9 +30,28 @@ var (
 	DenomCLUNA  = "ucluna"
 	DenomPLUNA  = "upluna"
 	DenomLUNAX  = "ulunax"
-	CLuna       = "terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"
-	AUST        = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
+
+	AUST = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
+
+var contractToDenomMap map[string]string
+
+func init() {
+	contractToDenomMap = make(map[string]string)
+	contractToDenomMap["terra1tlgelulz9pdkhls6uglfn5lmxarx7f2gxtdzh2"] = DenomPLUNA
+	contractToDenomMap["terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"] = DenomCLUNA
+	contractToDenomMap["uluna"] = DenomLUNA
+	contractToDenomMap["uusd"] = DenomUST
+	contractToDenomMap[AUST] = DenomAUST
+}
+
+func MapContractToDenom(addr string) string {
+	denom, ok := contractToDenomMap[addr]
+	if !ok {
+		panic(fmt.Errorf("contract %s not mapped to denom", addr))
+	}
+	return denom
+}
 
 type allAccountsResponse struct {
 	Accounts []string `json:"accounts"`

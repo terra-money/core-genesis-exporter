@@ -15,8 +15,8 @@ var (
 
 // ExportValkyrie iterates over VKR-UST LP then extract UST portion
 func ExportValkyrie(app *terra.TerraApp, b util.Blacklist) (map[string]util.SnapshotBalance, error) {
-	b.RegisterAddress(PairVKRUSTAstroport, util.DenomUST)
-	b.RegisterAddress(PairVKRUSTTerraswap, util.DenomUST)
+	b.RegisterAddress(util.DenomUST, PairVKRUSTAstroport)
+	b.RegisterAddress(util.DenomUST, PairVKRUSTTerraswap)
 
 	// 1. Virtually unstake astroport LP, and add to provided LP
 

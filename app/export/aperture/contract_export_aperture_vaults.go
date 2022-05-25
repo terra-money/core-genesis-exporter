@@ -1,4 +1,4 @@
-package app
+package aperture
 
 import (
 	"context"
@@ -40,11 +40,12 @@ type BatchItem struct {
 	} `json:"info"`
 }
 
-func ExportApertureVaults(app *terra.TerraApp, q wasmtypes.QueryServer, snapshotType util.Snapshot, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
+func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
 	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
 	lastPosition, err := getApertureLastPositionId(ctx, q)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	workerCount := 50
 	jobs := make(chan (sdk.Int), lastPosition.Int64())
@@ -68,12 +69,15 @@ func ExportApertureVaults(app *terra.TerraApp, q wasmtypes.QueryServer, snapshot
 		// owned by the wallet
 		if snapshotType == util.Snapshot(util.PreAttack) {
 			balances[util.AUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
+			bl.RegisterAddress(util.DenomAUST, item.Contract)
+			fmt.Println(item)
 		} else {
 			balances["uusd"][item.Holder] = item.Info.UstAmount
 		}
 	}
-	fmt.Printf("%v\n", balances)
-	return balances, nil
+	snapshot.Add(balances[util.DenomAUST], util.DenomAUST)
+	snapshot.Add(balances[util.DenomUST], util.DenomUST)
+	return nil
 }
 
 func getApertureLastPositionId(ctx context.Context, q wasmtypes.QueryServer) (sdk.Int, error) {
