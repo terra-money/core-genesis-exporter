@@ -11,8 +11,10 @@ import (
 )
 
 var (
-	marsMarket        = "terra19dtgj9j5j7kyf3pmejqv8vzfpxtejaypgzkz5u"
-	maLunaToken       = "terra1x4rrkxx5pyuce32wsdn8ypqnpx8n27klnegv0d"
+	marsMarket  = "terra19dtgj9j5j7kyf3pmejqv8vzfpxtejaypgzkz5u"
+	maLunaToken = "terra1x4rrkxx5pyuce32wsdn8ypqnpx8n27klnegv0d"
+	// TODO: assign safety fund to mars multisig
+	marsSafetyFund    = "terra16zrcxq6pyq7uxhcmgfe68p09xh6g4wk6yw2f70"
 	marsLunaLiquidity = ""
 	marsUSTLiquidity  = ""
 	marsFields        = []string{
@@ -72,10 +74,10 @@ func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
-	var balances = make(map[string]sdk.Int)
+	var balances = make(util.BalanceMap)
 	logger.Info("fetching MARS liquidity (UST)...")
 
-	if err := util.GetCW20AccountsAndBalances_Inefficient(ctx, balances, marsUSTLiquidity, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, marsUSTLiquidity, balances); err != nil {
 		return nil, err
 	}
 
