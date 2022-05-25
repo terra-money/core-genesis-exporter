@@ -64,5 +64,6 @@ func ExportStarTerraIDO(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 		offset = idoFunders.Users[len(idoFunders.Users)-1].Funder
 	}
 
+	bl.RegisterAddress(util.DenomUST, StarTerraIDO)
 	return balances, nil
 }
