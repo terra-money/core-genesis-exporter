@@ -1,4 +1,4 @@
-package app
+package mars
 
 import (
 	"context"
@@ -146,22 +146,31 @@ func ExportMarsSafetyFund(app *terra.TerraApp, snapshot util.SnapshotBalanceAggr
 // 1. Get the LP token contract addr
 // 2. List all positions recurrsively
 // 3. Find how much LP tokens are deposited at the astroport generator
-// 4. Split the LP based on bond_unit and create a holding map with format {"lp_token_addr": {"wallet_addr": "amount"}}
-func ExportFieldOfMarsLpTokens(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+// 4. Split the LP based on bond_unit and create a holding map with format {farm: {"lp_token_addr": {"wallet_addr": "amount"}}}
+func ExportFieldOfMarsLpTokens(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	q := util.PrepWasmQueryServer(app)
 	ctx := util.PrepCtx(app)
-	holdings := make(map[string]map[string]sdk.Int)
+	holdings := make(map[string]map[string]map[string]sdk.Int)
 	lpTokenFieldMap := make(map[string]string)
 	for _, fieldContract := range marsFields {
-		err := getFieldOfMarsPositions(ctx, q, fieldContract, holdings, lpTokenFieldMap)
+		holding := make(map[string]map[string]sdk.Int)
+		err := getFieldOfMarsPositions(ctx, q, fieldContract, holding, lpTokenFieldMap)
+		holdings[fieldContract] = holding
 		if err != nil {
 			app.Logger().Error(err.Error())
 			return nil, err
 		}
 	}
 
-	for lpToken, holdings := range holdings {
-		fieldContract := lpTokenFieldMap[lpToken]
-		auditAstroportLpBalances(ctx, q, astroportGenerator, lpToken, holdings, fieldContract)
+	for _, holding := range holdings {
+		for lpToken, h := range holding {
+			fieldContract := lpTokenFieldMap[lpToken]
+			err := auditAstroportLpBalances(ctx, q, astroportGenerator, lpToken, h, fieldContract)
+			if err != nil {
+				return nil, err
+			}
+
+		}
 	}
 	return holdings, nil
 }
@@ -176,7 +185,10 @@ func auditAstroportLpBalances(ctx context.Context, q wasmtypes.QueryServer, astr
 		totalHolding = totalHolding.Add(balance)
 	}
 
-	fmt.Printf("lp_token: %s, difference: %s, astroport: %s, total %s\n", lpToken, totalHolding.Sub(astroportDeposits), astroportDeposits, totalHolding)
+	err = util.AlmostEqual("mars farm", totalHolding, astroportDeposits, sdk.NewInt(100000))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 

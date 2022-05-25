@@ -18,12 +18,12 @@ func isTargetPool(p *pool) bool {
 		(p.Assets[1].AssetInfo.NativeToken != nil && p.Assets[1].AssetInfo.NativeToken.Denom == util.DenomUST) ||
 		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressAUST) ||
 		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressBLUNA) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressSTLUNA) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressCLUNA) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressPLUNA) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressNLUNA) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressSTEAK) ||
-		(p.Assets[0].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressLUNAX)
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressSTLUNA) ||
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressCLUNA) ||
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressPLUNA) ||
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressNLUNA) ||
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressSTEAK) ||
+		(p.Assets[1].AssetInfo.Token != nil && p.Assets[1].AssetInfo.Token.ContractAddr == AddressLUNAX)
 
 	return isOk
 }

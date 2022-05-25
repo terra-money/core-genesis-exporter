@@ -5,10 +5,11 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
-	"github.com/terra-money/core/app/export/apollo"
+	"github.com/terra-money/core/app/export/astroport"
+	"github.com/terra-money/core/app/export/kujira"
 	"github.com/terra-money/core/app/export/lido"
+	"github.com/terra-money/core/app/export/mars"
 	"github.com/terra-money/core/app/export/prism"
-	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/util"
 )
 
@@ -21,10 +22,18 @@ func ExportContracts(app *terra.TerraApp) {
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
 
+	err = kujira.ExportKujiraVault(app, snapshot, &bl)
+	if err != nil {
+		panic(err)
+	}
+
 	//fmt.Println(ExportSuberra(app))
 	//fmt.Println(alice.ExportAlice(app, bl))
-	// compoundedLps, err := exportCompounders(app)
-	// astroport.ExportAstroportLP(app, bl, compoundedLps)
+	compoundedLps, err := exportCompounders(app)
+	if err != nil {
+		panic(err)
+	}
+	astroport.ExportAstroportLP(app, bl, compoundedLps)
 	// fmt.Println(kujira.ExportKujiraStaking(app, &bl))
 	// fmt.Println(alice.ExportAlice(app, bl))
 	// err = edge.ExportContract(app, snapshot, &bl)
@@ -75,16 +84,27 @@ func NewBlacklist() util.Blacklist {
 }
 
 func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
-	specLps, err := spectrum.ExportSpecVaultLPs(app)
+	finalMap := make(map[string]map[string]map[string]sdk.Int)
+	// specLps, err := spectrum.ExportSpecVaultLPs(app)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for k, v := range specLps {
+	// 	finalMap[k] = v
+	// }
+	// apolloLps, err := apollo.ExportApolloVaultLPs(app)
+	// if err != nil {
+	// 	return nil, err
+	// }
+	// for k, v := range apolloLps {
+	// 	finalMap[k] = v
+	// }
+	marsLps, err := mars.ExportFieldOfMarsLpTokens(app)
 	if err != nil {
 		return nil, err
 	}
-	apolloLps, err := apollo.ExportApolloVaultLPs(app)
-	if err != nil {
-		return nil, err
+	for k, v := range marsLps {
+		finalMap[k] = v
 	}
-	for k, v := range apolloLps {
-		specLps[k] = v
-	}
-	return specLps, nil
+	return finalMap, nil
 }
