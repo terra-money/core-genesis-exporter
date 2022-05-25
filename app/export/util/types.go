@@ -1,6 +1,10 @@
 package util
 
-import sdk "github.com/cosmos/cosmos-sdk/types"
+import (
+	"fmt"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+)
 
 type BalanceMap map[string]sdk.Int
 type SnapshotBalance struct {
@@ -61,7 +65,8 @@ func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {
 	for denom, addrList := range bl {
 		for _, addr := range addrList {
 			for i, snapshotBalance := range s[addr] {
-				if snapshotBalance.Denom == denom {
+				if snapshotBalance.Denom == denom && !snapshotBalance.Balance.IsZero() {
+					fmt.Printf("Removed %s %s from %s\n", snapshotBalance.Balance, snapshotBalance.Denom, addr)
 					// Remove by setting to 0
 					s[addr][i] = SnapshotBalance{
 						Denom:   snapshotBalance.Denom,

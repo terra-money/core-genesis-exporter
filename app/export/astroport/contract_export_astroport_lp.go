@@ -82,6 +82,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 
 		lpHoldersMap[lpAddr] = balanceMap
 	}
+
 	app.Logger().Info("... LPs in Generator")
 	// get LP tokens in generator
 	generatorPrefix := util.GeneratePrefix("user_info")
@@ -97,15 +98,6 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		var userInfo struct {
 			Amount sdk.Int `json:"amount"`
 		}
-
-		if len(contractLpHolders[userAddress]) > 0 {
-			for user, amount := range contractLpHolders[userAddress][lpAddr] {
-				lpHoldersMap[lpAddr][user] = amount
-			}
-			app.Logger().Info("...... Resolved for contract: %s, Added %d users\n", userAddress, len(contractLpHolders[userAddress][lpAddr]))
-			return false
-		}
-
 		util.MustUnmarshalTMJSON(value, &userInfo)
 
 		holdInfo, userExists := lpHoldersMap[lpAddr][userAddress]
@@ -124,6 +116,30 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		pool := pools[pairAddr]
 
 		holderMap := lpHoldersMap[lpAddr]
+
+		// Remove LP tokens owned by the staking generator
+		delete(holderMap, AddressAstroportGenerator)
+
+		// Replace LP tokens owned by other vaults
+		for vaultAddr, lpHoldings := range contractLpHolders {
+			lpHolding, ok := lpHoldings[lpAddr]
+			if ok {
+				vaultAmount := holderMap[vaultAddr]
+				delete(holderMap, vaultAddr)
+				app.Logger().Info(fmt.Sprintf("...... Resolved for contract: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
+				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
+				if err != nil {
+					panic(err)
+				}
+				for addr, amount := range lpHolding {
+					if holderMap[addr].IsNil() {
+						holderMap[addr] = sdk.ZeroInt()
+					} else {
+						holderMap[addr] = holderMap[addr].Add(amount)
+					}
+				}
+			}
+		}
 
 		// iterate over LP holders, calculate how much is to be refunded
 		for userAddr, lpBalance := range holderMap {
@@ -152,7 +168,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 
 			// add to final balance if anything
 			if len(userBalance) != 0 {
-				finalBalance[userAddr] = userBalance
+				finalBalance[userAddr] = append(finalBalance[userAddr], userBalance...)
 			}
 		}
 	}
