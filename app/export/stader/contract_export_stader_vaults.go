@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	StaderVaults = "terra1v05vafsr8w8ar0mw040cluz0rq6pg2rrpues5r"
-	StaderLunaX  = "terra1xacqx447msqp46qmv8k2sq6v5jh9fdj37az898"
+	Vaults = "terra1v05vafsr8w8ar0mw040cluz0rq6pg2rrpues5r"
 )
 
 // ExportStaderVaults Export LunaX balances in Stader vaults.
@@ -21,17 +20,11 @@ func ExportStaderVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 	q := util.PrepWasmQueryServer(app)
 	balances := make(util.SnapshotBalanceMap)
 
-	// get LunaX <> Luna ER
-	var lunaxState struct {
-		State struct {
-			ExchangeRate sdk.Dec `json:"exchange_rate"`
-		} `json:"state"`
-	}
+	logger := app.Logger()
+	logger.Info("fetching Stader vault balances...")
 
-	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: StaderLunaX,
-		QueryMsg:        []byte("{\"state\":{}}"),
-	}, &lunaxState); err != nil {
+	exchangeRate, err := GetLunaXExchangeRate(ctx, q)
+	if err != nil {
 		return nil, err
 	}
 
@@ -50,7 +43,7 @@ func ExportStaderVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 		}
 
 		if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: StaderVaults,
+			ContractAddress: Vaults,
 			QueryMsg:        []byte(query),
 		}, &staderVaults); err != nil {
 			panic(err)
@@ -68,7 +61,7 @@ func ExportStaderVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 
 			balances[userDetails.Address] = util.SnapshotBalance{
 				Denom:   util.DenomLUNA,
-				Balance: previousAmount.Add(lunaxState.State.ExchangeRate.MulInt(userDetails.DepositValue).TruncateInt()),
+				Balance: previousAmount.Add(exchangeRate.MulInt(userDetails.DepositValue).TruncateInt()),
 			}
 		}
 
