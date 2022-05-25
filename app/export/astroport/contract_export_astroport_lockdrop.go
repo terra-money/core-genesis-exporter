@@ -8,46 +8,20 @@ import (
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
-var (
-	AddressAstroportLockdrop = "terra1627ldjvxatt54ydd3ns6xaxtd68a2vtyu7kakj"
-	AddressAstroportFactory  = "terra1fnywlw4edny3vw44x04xd67uzkdqluymgreu7g"
-	AddressAUST              = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
-	AddressBLUNA             = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
-)
-
-type (
-	pool struct {
-		Asset [2]struct {
-			AssetInfo assetInfo `json:"info"`
-			Amount    sdk.Int   `json:"amount"`
-		} `json:"assets"`
-		TotalShare sdk.Int `json:"total_share"`
-	}
-
-	// only care about migration info to figure out ts -> astro migrated
-	poolInfo struct {
-		MigrationInfo struct {
-			AstroportLPToken string `json:"astroport_lp_token"`
-		} `json:"migration_info"`
-	}
-
-	assetInfo struct {
-		Token *struct {
-			ContractAddr string `json:"contract_addr"`
-		} `json:"token,omitempty"`
-		NativeToken *struct {
-			Denom string `json:"denom"`
-		} `json:"native_token,omitempty"`
-	}
-
-	poolMap map[string]pool
-
-	refund struct {
-		asset0  string
-		asset1  string
-		refunds [2]sdk.Int
-	}
-)
+// This exporter covers ONLY lockdrop pools in astroport.
+// Only the following Terraswap LP tokens were part of lockdrop.
+//
+// bLUNA/LUNA - terra1nuy34nwnsh53ygpc4xprlj263cztw7vc99leh2
+// LUNA/UST - terra17dkr9rnmtmu7x4azrpupukvur2crnptyfvsrvr
+// ANC/UST - terra1gecs98vcuktyfkrve9czrpgtg0m3aq586x6gzm
+// MIR/UST - terra17gjf2zehfvnyjtdgua9p9ygquk6gukxe7ucgwh
+// MINE/UST - terra1rqkyau9hanxtn63mjrdfhpnkpddztv3qav0tq2
+// ORION/UST - terra14ffp0waxcck733a9jfd58d86h9rac2chf5xhev
+// STT/UST - terra1uwhf02zuaw7grj6gjs7pxt5vuwm79y87ct5p70
+// VKR/UST - terra17fysmcl52xjrs8ldswhz7n6mt37r9cmpcguack
+// PSI/UST - terra1q6r8hfdl203htfvpsmyh8x689lp2g0m7856fwd
+// APOLLO/UST - terra1n3gt4k3vth0uppk0urche6m3geu9eqcyujt88q
+// means we only need to care about UST/LUNA/bLUNA
 
 func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	bl.RegisterAddress(AddressAstroportLockdrop, util.DenomLUNA)
@@ -140,8 +114,8 @@ func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.Snapsho
 		}
 
 		userRefunds[userAddress] = append(userRefunds[userAddress], refund{
-			asset0:  pickDenomOrContractAddress(pairPool.Asset[0].AssetInfo),
-			asset1:  pickDenomOrContractAddress(pairPool.Asset[1].AssetInfo),
+			asset0:  pickDenomOrContractAddress(pairPool.Assets[0].AssetInfo),
+			asset1:  pickDenomOrContractAddress(pairPool.Assets[1].AssetInfo),
 			refunds: refundAssets,
 		})
 
@@ -182,48 +156,7 @@ func getShareInAssets(p pool, lpAmount sdk.Int, totalShare sdk.Int) [2]sdk.Int {
 	}
 
 	return [2]sdk.Int{
-		shareRatio.MulInt(p.Asset[0].Amount).TruncateInt(),
-		shareRatio.MulInt(p.Asset[1].Amount).TruncateInt(),
+		shareRatio.MulInt(p.Assets[0].Amount).TruncateInt(),
+		shareRatio.MulInt(p.Assets[1].Amount).TruncateInt(),
 	}
-}
-
-// see if pool contains any of LUNA, UST, AUST, BLUNA
-func isTargetPool(p *pool) bool {
-	isOk := (p.Asset[0].AssetInfo.NativeToken != nil && p.Asset[0].AssetInfo.NativeToken.Denom == util.DenomLUNA) ||
-		(p.Asset[0].AssetInfo.NativeToken != nil && p.Asset[0].AssetInfo.NativeToken.Denom == util.DenomUST) ||
-		(p.Asset[0].AssetInfo.Token != nil && p.Asset[0].AssetInfo.Token.ContractAddr == AddressAUST) ||
-		(p.Asset[0].AssetInfo.Token != nil && p.Asset[0].AssetInfo.Token.ContractAddr == AddressBLUNA) ||
-		(p.Asset[1].AssetInfo.NativeToken != nil && p.Asset[1].AssetInfo.NativeToken.Denom == util.DenomLUNA) ||
-		(p.Asset[1].AssetInfo.NativeToken != nil && p.Asset[1].AssetInfo.NativeToken.Denom == util.DenomUST) ||
-		(p.Asset[1].AssetInfo.Token != nil && p.Asset[1].AssetInfo.Token.ContractAddr == AddressAUST) ||
-		(p.Asset[1].AssetInfo.Token != nil && p.Asset[1].AssetInfo.Token.ContractAddr == AddressBLUNA)
-
-	return isOk
-}
-
-func pickDenomOrContractAddress(asset assetInfo) string {
-	if asset.Token != nil {
-		return asset.Token.ContractAddr
-	}
-
-	if asset.NativeToken != nil {
-		return asset.NativeToken.Denom
-	}
-
-	panic("unknown denom")
-}
-
-func coalesceToBalanceDenom(assetName string) (string, bool) {
-	switch assetName {
-	case "uusd":
-		return util.DenomUST, true
-	case "uluna":
-		return util.DenomLUNA, true
-	case AddressAUST:
-		return util.DenomAUST, true
-	case AddressBLUNA: // treat bLUNA the same as LUNA, deal with exchange rate later
-		return util.DenomBLUNA, true
-	}
-
-	return "", false
 }

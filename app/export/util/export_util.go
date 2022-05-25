@@ -25,6 +25,11 @@ var (
 	DenomLUNA   = "uluna"
 	DenomBLUNA  = "ubluna"
 	DenomSTLUNA = "ustluna"
+	DenomSTEAK  = "usteak"
+	DenomNLUNA  = "unluna"
+	DenomCLUNA  = "ucluna"
+	DenomPLUNA  = "upluna"
+	DenomLUNAX  = "ulunax"
 	AUST        = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
 
@@ -285,5 +290,13 @@ func ToCsv(filePath string, headers []string, data [][]string) {
 
 	for _, r := range data {
 		_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(r, ","))))
+	}
+}
+
+func ToAddress(addr string) sdk.AccAddress {
+	if acc, err := sdk.AccAddressFromBech32(addr); err != nil {
+		panic(fmt.Errorf("cannot convert addres %s to sdk.AccAddress", addr))
+	} else {
+		return acc
 	}
 }

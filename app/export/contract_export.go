@@ -2,9 +2,9 @@ package app
 
 import (
 	"fmt"
+	"github.com/terra-money/core/app/export/astroport"
 
 	terra "github.com/terra-money/core/app"
-	"github.com/terra-money/core/app/export/alice"
 	"github.com/terra-money/core/app/export/util"
 )
 
@@ -16,7 +16,8 @@ func ExportContracts(app *terra.TerraApp) {
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
 
 	//fmt.Println(ExportSuberra(app))
-	fmt.Println(alice.ExportAlice(app, bl))
+	//fmt.Println(alice.ExportAlice(app, bl))
+	fmt.Println(astroport.ExportAstroportLP(app, bl))
 }
 
 func NewBlacklist() util.Blacklist {
