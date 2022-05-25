@@ -55,10 +55,10 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 					lunaAmount := lunaXExchangeRate.MulInt(position.Collateral.Amount).TruncateInt()
 					totalLunaXAmount = totalLunaXAmount.Add(position.Collateral.Amount)
 
-					snapshot.AppendOrAddBalance(position.Owner, lunaAmount, util.DenomLUNA)
+					snapshot.AppendOrAddBalance(position.Owner, util.SnapshotBalance{Denom: util.DenomLUNA, Balance: lunaAmount})
 				} else {
 					// normal case (uluna, uusd, or AUST)
-					snapshot.AppendOrAddBalance(position.Owner, position.Collateral.Amount, denom)
+					snapshot.AppendOrAddBalance(position.Owner, util.SnapshotBalance{Denom: denom, Balance: position.Collateral.Amount})
 				}
 				break
 			}
