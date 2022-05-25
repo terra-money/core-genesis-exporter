@@ -1,4 +1,4 @@
-package terraswap
+package loop
 
 import (
 	"fmt"
@@ -8,9 +8,25 @@ import (
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
-// ExportTerraswapLiquidity scan all factory contracts, look for pairs that have luna or ust,
-// then
-func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportLoopLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+
+	factoryRun1, err := exportLoopPerFactory(app, bl, AddressLoopFactory1)
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println("factoryRun1", len(factoryRun1))
+
+	factoryRun2, err := exportLoopPerFactory(app, bl, AddressLoopFactory2)
+	if err != nil {
+		return nil, err
+	}
+	fmt.Println("factoryRun2", len(factoryRun2))
+
+	return nil, nil
+}
+
+func exportLoopPerFactory(app *terra.TerraApp, bl util.Blacklist, factoryAddress string) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
 	keeper := app.WasmKeeper
@@ -19,7 +35,7 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 	var pools = make(poolMap)
 	var pairs = make(pairMap)
 	pairPrefix := util.GeneratePrefix("pair_info")
-	factory, _ := sdk.AccAddressFromBech32(AddressTerraswapFactory)
+	factory, _ := sdk.AccAddressFromBech32(factoryAddress)
 
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), factory, pairPrefix, func(key, value []byte) bool {
 		var pool pool
@@ -63,7 +79,7 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
 	var info tokenInfo
 	for _, pairInfo := range pairs {
-		lpAddr := pairInfo.LiquidityToken
+		lpAddr := sdk.AccAddress(pairInfo.LiquidityToken).String()
 		balanceMap := make(util.BalanceMap)
 
 		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
@@ -85,10 +101,55 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 		lpHoldersMap[lpAddr] = balanceMap
 	}
 
+	// tackle staking here. staking => fLP => LP => user
+	// fLP : LP = 1:1
+	staking1, _ := sdk.AccAddressFromBech32(AddressLoopFarm1)
+	staking2, _ := sdk.AccAddressFromBech32(AddressLoopFarm2)
+	for lpAddr, holdermap := range lpHoldersMap {
+		var flpAddrs = make([]string, 2)
+
+		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: staking1.String(),
+			QueryMsg:        []byte(fmt.Sprintf("{\"query_flp_token_from_pool_address\":{\"pool_address\":\"%s\"}}", lpAddr)),
+		}, &flpAddrs[0]); err != nil {
+			return nil, fmt.Errorf("error querying flp token: %v", err)
+		}
+
+		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: staking2.String(),
+			QueryMsg:        []byte(fmt.Sprintf("{\"query_flp_token_from_pool_address\":{\"pool_address\":\"%s\"}}", lpAddr)),
+		}, &flpAddrs[1]); err != nil {
+			return nil, fmt.Errorf("error querying flp token: %v", err)
+		}
+
+		// it's always either flpAddr1 or flpAddr2, or nothing
+		flpAddr := flpAddrs[1]
+		if flpAddr == "" {
+			continue
+		}
+
+		var lpBalance struct {
+			Balance sdk.Int `json:"balance"`
+		}
+
+		for userAddr, userHolding := range holdermap {
+			if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+				ContractAddress: flpAddr,
+				QueryMsg:        []byte(fmt.Sprintf("{\"balance\":{\"address\":\"%s\"}}", userAddr)),
+			}, &lpBalance); err != nil {
+				return nil, fmt.Errorf("failed to fetch FLP balance of user: %s, flp %s", userAddr, flpAddr)
+			}
+
+			// fLP:LP = 1:1
+			// add to existing balance
+			holdermap[userAddr] = userHolding.Add(lpBalance.Balance)
+		}
+	}
+
 	var finalBalance = make(util.SnapshotBalanceAggregateMap)
 	// for each pair LP token, get their token holding, calculate their holdings per pair
 	for pairAddr, pairInfo := range pairs {
-		lpAddr := pairInfo.LiquidityToken
+		lpAddr := sdk.AccAddress(pairInfo.LiquidityToken).String()
 		pool := pools[pairAddr]
 
 		holderMap := lpHoldersMap[lpAddr]

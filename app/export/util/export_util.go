@@ -94,7 +94,7 @@ func PrepWasmQueryServer(app *terra.TerraApp) wasmtypes.QueryServer {
 
 func MustUnmarshalTMJSON(bz []byte, dst interface{}) {
 	if err := tmjson.Unmarshal(bz, dst); err != nil {
-		panic(fmt.Sprintf("unable to unmarshal; got %v", bz))
+		panic(fmt.Sprintf("unable to unmarshal; got %v. err %v", bz, err))
 	}
 }
 
