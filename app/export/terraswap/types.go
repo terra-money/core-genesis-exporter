@@ -1,10 +1,14 @@
 package terraswap
 
-import sdk "github.com/cosmos/cosmos-sdk/types"
+import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/terra-money/core/app/export/anchor"
+)
 
 var (
 	AddressTerraswapFactory = "terra1ulgw0td86nvs4wtpsc80thv6xelk76ut7a7apj"
 
+	AddressAUST   = anchor.AddressAUST
 	AddressBLUNA  = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
 	AddressSTLUNA = "terra1yg3j2s986nyp5z7r2lvt0hx3r0lnd7kwvwwtsc"
 	AddressSTEAK  = "terra1rl4zyexjphwgx6v3ytyljkkc4mrje2pyznaclv"
