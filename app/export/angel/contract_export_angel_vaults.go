@@ -53,7 +53,6 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 			panic(err)
 		}
 
-		// TODO: Need to confirm aUST <-> apANC exchange rate.
 		aUSTBalance := sdk.NewInt(0)
 
 		if len(apANCBalance.LiquidCW20) != 0 {
