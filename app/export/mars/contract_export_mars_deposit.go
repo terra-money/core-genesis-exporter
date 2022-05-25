@@ -11,8 +11,10 @@ import (
 )
 
 var (
-	marsMarket        = "terra19dtgj9j5j7kyf3pmejqv8vzfpxtejaypgzkz5u"
-	maLunaToken       = "terra1x4rrkxx5pyuce32wsdn8ypqnpx8n27klnegv0d"
+	marsMarket  = "terra19dtgj9j5j7kyf3pmejqv8vzfpxtejaypgzkz5u"
+	maLunaToken = "terra1x4rrkxx5pyuce32wsdn8ypqnpx8n27klnegv0d"
+	// TODO: assign safety fund to mars multisig
+	marsSafetyFund    = "terra16zrcxq6pyq7uxhcmgfe68p09xh6g4wk6yw2f70"
 	marsLunaLiquidity = ""
 	marsUSTLiquidity  = ""
 	marsFields        = []string{

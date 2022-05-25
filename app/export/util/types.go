@@ -20,3 +20,19 @@ type Blacklist map[string][]string
 func (bl Blacklist) RegisterAddress(denom string, address string) {
 	bl[denom] = append(bl[denom], address)
 }
+
+func (bl Blacklist) GetAddressesByDenom(denom string) []string {
+	return bl[denom]
+}
+
+func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
+	sum := sdk.NewInt(0)
+	for _, balances := range s {
+		for _, balance := range balances {
+			if !balance.Balance.IsNil() {
+				sum.Add(balance.Balance)
+			}
+		}
+	}
+	return sum
+}

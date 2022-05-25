@@ -287,3 +287,11 @@ func ToCsv(filePath string, headers []string, data [][]string) {
 		_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(r, ","))))
 	}
 }
+
+func AlmostEqual(msg string, a types.Int, b types.Int, epsilon types.Int) error {
+	diff := a.Sub(b)
+	if !diff.Abs().LT(epsilon) {
+		return fmt.Errorf("%s difference: %s\n", msg, diff)
+	}
+	return nil
+}
