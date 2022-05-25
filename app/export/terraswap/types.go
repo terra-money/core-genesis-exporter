@@ -1,4 +1,4 @@
-package astroport
+package terraswap
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -6,8 +6,7 @@ import (
 )
 
 var (
-	AddressAstroportLockdrop = "terra1627ldjvxatt54ydd3ns6xaxtd68a2vtyu7kakj"
-	AddressAstroportFactory  = "terra1fnywlw4edny3vw44x04xd67uzkdqluymgreu7g"
+	AddressTerraswapFactory = "terra1ulgw0td86nvs4wtpsc80thv6xelk76ut7a7apj"
 
 	AddressAUST   = anchor.AddressAUST
 	AddressBLUNA  = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
@@ -32,15 +31,8 @@ type (
 
 	pair struct {
 		AssetInfos     [2]assetInfo `json:"asset_infos"`
-		ContractAddr   string       `json:"contract_addr"`
+		ContractAddr   []byte       `json:"contract_addr"`
 		LiquidityToken string       `json:"liquidity_token"`
-	}
-
-	// only care about migration info to figure out ts -> astro migrated
-	poolInfo struct {
-		MigrationInfo struct {
-			AstroportLPToken string `json:"astroport_lp_token"`
-		} `json:"migration_info"`
 	}
 
 	assetInfo struct {
@@ -59,5 +51,9 @@ type (
 		asset0  string
 		asset1  string
 		refunds [2]sdk.Int
+	}
+
+	tokenInfo struct {
+		TotalSupply sdk.Int `json:"total_supply"`
 	}
 )

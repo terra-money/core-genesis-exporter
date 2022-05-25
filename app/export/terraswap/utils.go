@@ -1,6 +1,9 @@
-package astroport
+package terraswap
 
-import "github.com/terra-money/core/app/export/util"
+import (
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/terra-money/core/app/export/util"
+)
 
 // see if pool contains any of LUNA, UST, AUST, BLUNA
 func isTargetPool(p *pool) bool {
@@ -63,4 +66,16 @@ func coalesceToBalanceDenom(assetName string) (string, bool) {
 	}
 
 	return "", false
+}
+
+func getShareInAssets(p pool, lpAmount sdk.Int, totalShare sdk.Int) [2]sdk.Int {
+	shareRatio := sdk.ZeroDec()
+	if !totalShare.IsZero() {
+		shareRatio = sdk.NewDecFromInt(lpAmount).Quo(sdk.NewDecFromInt(totalShare))
+	}
+
+	return [2]sdk.Int{
+		shareRatio.MulInt(p.Assets[0].Amount).TruncateInt(),
+		shareRatio.MulInt(p.Assets[1].Amount).TruncateInt(),
+	}
 }
