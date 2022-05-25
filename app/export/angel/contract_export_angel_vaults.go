@@ -11,8 +11,9 @@ import (
 )
 
 const (
-	AngelEndowments = "terra1nwk2y5nfa5sxx6gtxr84lre3zpnn7cad2f266h"
-	AngelAPANC      = "terra172ue5d0zm7jlsj2d9af4vdff6wua7mnv6dq5vp"
+	Endowments = "terra1nwk2y5nfa5sxx6gtxr84lre3zpnn7cad2f266h"
+	APANC      = "terra172ue5d0zm7jlsj2d9af4vdff6wua7mnv6dq5vp"
+	DANO       = "terra1rcznds2le2eflj3y4e8ep3e4upvq04sc65wdly" // Wallet that holds UST/aUST for charities.
 )
 
 // ExportAngelEndowments Export aUST endowments
@@ -20,6 +21,10 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	balances := make(util.SnapshotBalanceMap)
+	logger := app.Logger()
+	logger.Info("fetching Angel Protocol endowments...")
+
+	totalaUST := sdk.NewInt(0)
 
 	var endowments struct {
 		Endowments []struct {
@@ -28,7 +33,7 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	}
 
 	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: AngelEndowments,
+		ContractAddress: Endowments,
 		QueryMsg:        []byte("{\"endowment_list\":{}}"),
 	}, &endowments); err != nil {
 		panic(err)
@@ -47,7 +52,7 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 		}
 
 		if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: AngelAPANC,
+			ContractAddress: APANC,
 			QueryMsg:        []byte(fmt.Sprintf("{\"balance\":{\"address\":\"%s\"}}", endowment.Address)),
 		}, &apANCBalance); err != nil {
 			panic(err)
@@ -66,6 +71,8 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 		if aUSTBalance.IsZero() {
 			continue
 		}
+
+		totalaUST = totalaUST.Add(aUSTBalance)
 
 		// Fetch endowment owner from InitMsg.
 		var initMsg struct {
@@ -89,6 +96,10 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 		}
 	}
 
-	// TODO: Figure out what contract to blacklist for aUST.
+	logger.Info(fmt.Sprintf("total aUST indexed: %d", totalaUST.Int64()))
+
+	// These balances are counted using apANC tokens above.
+	bl.RegisterAddress(util.DenomUST, DANO)
+	bl.RegisterAddress(util.DenomAUST, DANO)
 	return balances, nil
 }
