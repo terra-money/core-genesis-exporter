@@ -25,15 +25,12 @@ var (
 	DenomLUNA   = "uluna"
 	DenomBLUNA  = "ubluna"
 	DenomSTLUNA = "ustluna"
-<<<<<<< HEAD
 	DenomSTEAK  = "usteak"
 	DenomNLUNA  = "unluna"
 	DenomCLUNA  = "ucluna"
 	DenomPLUNA  = "upluna"
 	DenomLUNAX  = "ulunax"
-=======
 	CLuna       = "terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"
->>>>>>> 8a1f4a69b4fb117e6ff470ea7db47e1f045ba860
 	AUST        = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
 
