@@ -116,7 +116,5 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 		}
 	}
 
-	// TODO: Figure out proper address to blacklist.
-	// bl.RegisterAddress(util.DenomLUNA, StaderPools)
 	return balances, nil
 }

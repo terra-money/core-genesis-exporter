@@ -15,7 +15,7 @@ var (
 )
 
 // ExportLunaX get LunaX balance for all accounts, multiply ER
-func ExportLunaX(app *terra.TerraApp) (util.SnapshotBalanceMap, error) {
+func ExportLunaX(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	balances := make(util.SnapshotBalanceMap)
@@ -42,6 +42,7 @@ func ExportLunaX(app *terra.TerraApp) (util.SnapshotBalanceMap, error) {
 		}
 	}
 
+	bl.RegisterAddress(util.DenomLUNA, LunaXState)
 	return balances, nil
 }
 
