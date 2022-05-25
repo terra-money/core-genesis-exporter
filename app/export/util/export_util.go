@@ -25,7 +25,15 @@ var (
 	DenomLUNA   = "uluna"
 	DenomBLUNA  = "ubluna"
 	DenomSTLUNA = "ustluna"
+<<<<<<< HEAD
+	DenomSTEAK  = "usteak"
+	DenomNLUNA  = "unluna"
+	DenomCLUNA  = "ucluna"
+	DenomPLUNA  = "upluna"
+	DenomLUNAX  = "ulunax"
+=======
 	CLuna       = "terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"
+>>>>>>> 8a1f4a69b4fb117e6ff470ea7db47e1f045ba860
 	AUST        = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
 
@@ -136,73 +144,6 @@ func GetCW20AccountsAndBalances2(ctx context.Context, keeper wasmkeeper.Keeper, 
 	return nil
 }
 
-func GetCW20AccountsAndBalances_Inefficient(ctx context.Context, balanceMap map[string]sdktypes.Int, contractAddress string, q wasmtypes.QueryServer) error {
-	var allAccounts allAccountsResponse
-	var accounts []string
-
-	var getAccounts func(lastAccount string) error
-	getAccounts = func(lastAccount string) error {
-		// get aUST balance
-		// lcd.terra.dev/wasm/contracts/terra1..../store?query_msg={"balance":{"address":"terra1...."}}
-		response, err := q.ContractStore(ctx, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: contractAddress,
-			QueryMsg:        GetAllBalancesQuery(lastAccount),
-		})
-
-		if err != nil {
-			return err
-		}
-
-		unmarshalErr := tmjson.Unmarshal(response.QueryResult, &allAccounts)
-		if unmarshalErr != nil {
-			return unmarshalErr
-		}
-
-		accounts = append(accounts, allAccounts.Accounts...)
-
-		if len(allAccounts.Accounts) < 30 {
-			return nil
-		} else {
-			return getAccounts(allAccounts.Accounts[len(allAccounts.Accounts)-1])
-		}
-	}
-
-	if err := getAccounts(""); err != nil {
-		return err
-	}
-
-	// now accounts slice is filled, get actual balances
-	var balance balanceResponse
-	var getAnchorUSTBalance func(account string) error
-	getAnchorUSTBalance = func(account string) error {
-		response, err := q.ContractStore(ctx, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: AUST,
-			QueryMsg:        GetBalance(account),
-		})
-
-		if err != nil {
-			return err
-		}
-
-		unmarshalErr := json.Unmarshal(response.QueryResult, &balance)
-		if unmarshalErr != nil {
-			return unmarshalErr
-		}
-
-		balanceMap[account] = balance.Balance
-
-		return nil
-	}
-
-	for _, account := range accounts {
-		if err := getAnchorUSTBalance(account); err != nil {
-			return err
-		}
-	}
-
-	return nil
-}
-
 func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.QueryContractStoreRequest, res interface{}) error {
 	response, err := q.ContractStore(ctx, req)
 	if err != nil {
@@ -286,6 +227,14 @@ func ToCsv(filePath string, headers []string, data [][]string) {
 
 	for _, r := range data {
 		_, err = f.Write([]byte(fmt.Sprintf("%s\n", strings.Join(r, ","))))
+	}
+}
+
+func ToAddress(addr string) sdk.AccAddress {
+	if acc, err := sdk.AccAddressFromBech32(addr); err != nil {
+		panic(fmt.Errorf("cannot convert addres %s to sdk.AccAddress", addr))
+	} else {
+		return acc
 	}
 }
 

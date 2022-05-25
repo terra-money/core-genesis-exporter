@@ -74,10 +74,10 @@ func ExportMarsDepositUST(app *terra.TerraApp, q wasmtypes.QueryServer, bl *util
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
-	var balances = make(map[string]sdk.Int)
+	var balances = make(util.BalanceMap)
 	logger.Info("fetching MARS liquidity (UST)...")
 
-	if err := util.GetCW20AccountsAndBalances_Inefficient(ctx, balances, marsUSTLiquidity, q); err != nil {
+	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, marsUSTLiquidity, balances); err != nil {
 		return nil, err
 	}
 
