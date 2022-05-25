@@ -155,6 +155,20 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 	return nil
 }
 
+func ContractInitMsg(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.QueryContractInfoRequest, res interface{}) error {
+	response, err := q.ContractInfo(ctx, req)
+	if err != nil {
+		return err
+	}
+
+	unmarshalErr := json.Unmarshal(response.ContractInfo.InitMsg, res)
+	if unmarshalErr != nil {
+		return unmarshalErr
+	}
+
+	return nil
+}
+
 func AccAddressFromBase64(s string) (sdk.AccAddress, error) {
 	addr, err := base64.StdEncoding.DecodeString(s)
 	if err != nil {

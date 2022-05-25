@@ -67,16 +67,28 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 			continue
 		}
 
-		previousAmount := balances[endowment.Address].Balance
+		// Fetch endowment owner from InitMsg.
+		var initMsg struct {
+			Owner string `json:"owner"`
+		}
+
+		if err := util.ContractInitMsg(ctx, q, &wasmtypes.QueryContractInfoRequest{
+			ContractAddress: endowment.Address,
+		}, &initMsg); err != nil {
+			panic(err)
+		}
+
+		previousAmount := balances[initMsg.Owner].Balance
 		if previousAmount.IsNil() {
 			previousAmount = sdk.NewInt(0)
 		}
 
-		balances[endowment.Address] = util.SnapshotBalance{
+		balances[initMsg.Owner] = util.SnapshotBalance{
 			Denom:   util.DenomAUST,
 			Balance: previousAmount.Add(aUSTBalance),
 		}
 	}
 
+	// TODO: Figure out what contract to blacklist for aUST.
 	return balances, nil
 }
