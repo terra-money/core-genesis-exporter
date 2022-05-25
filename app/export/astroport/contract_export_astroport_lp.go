@@ -102,7 +102,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 			for user, amount := range contractLpHolders[userAddress][lpAddr] {
 				lpHoldersMap[lpAddr][user] = amount
 			}
-			fmt.Printf("Resolved for contract: %s, Added %d users\n", userAddress, len(contractLpHolders[userAddress][lpAddr]))
+			app.Logger().Info("...... Resolved for contract: %s, Added %d users\n", userAddress, len(contractLpHolders[userAddress][lpAddr]))
 			return false
 		}
 

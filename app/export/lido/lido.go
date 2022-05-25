@@ -31,9 +31,10 @@ func ExportBSTLunaHolders(
 	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
 ) error {
+	app.Logger().Info("Exporting bLUNA and stLuna holders")
 	ctx := util.PrepCtx(app)
-	// q := util.PrepWasmQueryServer(app)
 
+	app.Logger().Info("... stLUNA")
 	bondedStLunaHolders := make(map[string]sdk.Int)
 	err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, StLuna, bondedStLunaHolders)
 	if err != nil {
@@ -41,6 +42,7 @@ func ExportBSTLunaHolders(
 	}
 	snapshot.Add(bondedStLunaHolders, util.DenomSTLUNA)
 
+	app.Logger().Info("... bLUNA")
 	bondedBLunaHolders := make(map[string]sdk.Int)
 	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, BLuna, bondedBLunaHolders)
 	if err != nil {
@@ -52,6 +54,7 @@ func ExportBSTLunaHolders(
 }
 
 func ResolveLidoLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) error {
+	app.Logger().Info("Resolving bLuna and stLuna to LUNA")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	lidoState, err := getExchangeRates(ctx, q)
@@ -87,6 +90,7 @@ func ResolveLidoLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregate
 }
 
 func ExportLidoRewards(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+	app.Logger().Info("Distributing Lido staking rewards")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	snapshot.ApplyBlackList(*bl)

@@ -60,16 +60,19 @@ func ExportKujiraVault(app *terra.TerraApp, snapshot util.SnapshotBalanceAggrega
 	}
 	fmt.Printf("total in vault: %s\n", vaultBalance)
 
-	// Small rounding error here due to the way Kujira saves amount of aUST deposited
+	// Small rounding error (.00006%) here due to the way Kujira saves amount of aUST deposited
 	// When converting aUST to UST, the anchor exchange rate is used instead of
 	// listening to the hook of the new UST balance
-	util.AlmostEqual("kujira aUST", vaultBalance, util.Sum(balances), sdk.NewInt(10000))
+	err = util.AlmostEqual("kujira aUST", vaultBalance, util.Sum(balances), sdk.NewInt(50000000))
+	if err != nil {
+		return err
+	}
 	bl.RegisterAddress(util.DenomAUST, KujiraAUstVault)
 	snapshot.Add(balances, util.DenomAUST)
 	return nil
 }
 
-// TODO: Need to exclude Kujira LP from terraswap exports later
+// IGNORE: should be accounted for by terraswap side
 func ExportKujiraStaking(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("reward")
