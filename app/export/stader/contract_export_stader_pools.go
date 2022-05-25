@@ -11,20 +11,22 @@ import (
 )
 
 const (
-	StaderPools      = "terra1r2vv8cyt0scyxymktyfuudqs3lgtypk72w6m3m"
-	StaderDelegator  = "terra1t9ree3ftvgr70fvm6y67zsqxjms8jju8kwcsdu"
-	StaderController = "terra1xacqx447msqp46qmv8k2sq6v5jh9fdj37az898"
-	StaderSCC        = "terra127vwnwgwdvq94ce4ws76ddh0c699jt40dznrn2"
+	Pools     = "terra1r2vv8cyt0scyxymktyfuudqs3lgtypk72w6m3m"
+	Delegator = "terra1t9ree3ftvgr70fvm6y67zsqxjms8jju8kwcsdu"
+	SCC       = "terra127vwnwgwdvq94ce4ws76ddh0c699jt40dznrn2"
 )
 
 func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
+	logger := app.Logger()
+	logger.Info("fetching Stader staking pools...")
+
 	// Pull users from user_registry map.
 	// pub const USER_REGISTRY: Map<(&Addr, U64Key), UserPoolInfo> = Map::new("user_registry");
 	prefix := util.GeneratePrefix("user_registry")
-	delegatorAddr, err := sdk.AccAddressFromBech32(StaderDelegator)
+	delegatorAddr, err := sdk.AccAddressFromBech32(Delegator)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +61,7 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 			}
 
 			if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-				ContractAddress: StaderPools,
+				ContractAddress: Pools,
 				QueryMsg:        []byte(fmt.Sprintf("{\"get_user_computed_info\": {\"user_addr\": \"%s\", \"pool_id\": %d}}", address, i)),
 			}, &poolUserInfo); err != nil {
 				panic(err)
@@ -90,7 +92,7 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 		}
 
 		if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: StaderSCC,
+			ContractAddress: SCC,
 			QueryMsg:        []byte(fmt.Sprintf("{\"get_user\": {\"user\": \"%s\"}}", address)),
 		}, &sccUserInfo); err != nil {
 			panic(err)

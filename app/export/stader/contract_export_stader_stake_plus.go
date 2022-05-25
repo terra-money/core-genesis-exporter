@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	StaderStakeRegistry = "terra1ku85smu4ews088g64sk8wjx5edv8m42205ympl"
+	StakeRegistry = "terra1ku85smu4ews088g64sk8wjx5edv8m42205ympl"
 )
 
 type UserUndelegationRequest struct {
@@ -43,12 +43,15 @@ func ExportStaderStakePlus(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	q := util.PrepWasmQueryServer(app)
 	balances := make(util.SnapshotBalanceMap)
 
+	logger := app.Logger()
+	logger.Info("fetching Stader Stake+ balances...")
+
 	// get all stake+ contracts from registry
 	var staderContracts struct {
 		Contracts []string `json:"contracts"`
 	}
 	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: StaderStakeRegistry,
+		ContractAddress: StakeRegistry,
 		QueryMsg:        []byte("{\"get_staking_contracts\": {}}"),
 	}, &staderContracts); err != nil {
 		return nil, err
