@@ -54,14 +54,6 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 		}
 
 		pools[pairAddr] = pool
-
-		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: pairAddr,
-			QueryMsg:        []byte("{\"pair\":{}}"),
-		}, &pair); err != nil {
-			panic(fmt.Errorf("unable to query pair: %v", err))
-		}
-
 		pairs[pairAddr] = pair
 
 		return false
@@ -128,7 +120,7 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 
 			// add to final balance if anything
 			if len(userBalance) != 0 {
-				finalBalance[userAddr] = userBalance
+				finalBalance[userAddr] = append(finalBalance[userAddr], userBalance...)
 			}
 		}
 	}
