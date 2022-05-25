@@ -2,6 +2,7 @@ package astroport
 
 import (
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
@@ -13,7 +14,8 @@ var (
 )
 
 // ExportAstroportLP scans through all pairs on Astroport
-func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders map[string]map[string]map[string]sdk.Int) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Astroport LPs")
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
 	keeper := app.WasmKeeper
@@ -24,6 +26,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBal
 	pairPrefix := util.GeneratePrefix("pair_info")
 	factory, _ := sdk.AccAddressFromBech32(AddressAstroportFactory)
 
+	app.Logger().Info("... Querying pair info")
 	var pairAddr string
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), factory, pairPrefix, func(key, value []byte) bool {
 		var pool pool
@@ -79,7 +82,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBal
 
 		lpHoldersMap[lpAddr] = balanceMap
 	}
-
+	app.Logger().Info("... LPs in Generator")
 	// get LP tokens in generator
 	generatorPrefix := util.GeneratePrefix("user_info")
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), util.ToAddress(AddressAstroportGenerator), generatorPrefix, func(key, value []byte) bool {
@@ -93,6 +96,14 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBal
 
 		var userInfo struct {
 			Amount sdk.Int `json:"amount"`
+		}
+
+		if len(contractLpHolders[userAddress]) > 0 {
+			for user, amount := range contractLpHolders[userAddress][lpAddr] {
+				lpHoldersMap[lpAddr][user] = amount
+			}
+			fmt.Printf("Resolved for contract: %s, Added %d users\n", userAddress, len(contractLpHolders[userAddress][lpAddr]))
+			return false
 		}
 
 		util.MustUnmarshalTMJSON(value, &userInfo)

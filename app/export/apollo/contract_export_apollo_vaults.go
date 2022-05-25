@@ -1,4 +1,4 @@
-package app
+package apollo
 
 import (
 	"context"
@@ -10,7 +10,6 @@ import (
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/x/wasm/keeper"
-	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
 var (
@@ -41,11 +40,13 @@ type UserInfo struct {
 // Exports all LP ownership from Apollo vaults
 // Resulting map is in the following format
 // {
+//	"farm": {
 //   "lp_token_address_1": {
 //       "wallet_address": "amount",
-//   },
+//   }
+//	}
 // }
-func ExportApolloVaultLPs(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+func ExportApolloVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
 	strats, err := getListOfStrategies(ctx, app.WasmKeeper)
 	if err != nil {
@@ -53,13 +54,14 @@ func ExportApolloVaultLPs(app *terra.TerraApp, q wasmtypes.QueryServer) (map[str
 	}
 	// log.Printf("no. of apollo strats: %d\n", len(strats))
 
-	allLpHoldings := make(map[string]map[string]sdk.Int)
+	allLpHoldings := make(map[string]map[string]map[string]sdk.Int)
 	for _, strat := range strats {
 		lpHoldings, lpTokenAddr, err := getLpHoldingsForStrat(ctx, app.WasmKeeper, strat)
 		if err != nil {
 			panic(err)
 		}
-		allLpHoldings[lpTokenAddr.String()] = lpHoldings
+		allLpHoldings[strat.String()] = make(map[string]map[string]sdk.Int)
+		allLpHoldings[strat.String()][lpTokenAddr.String()] = lpHoldings
 	}
 	return allLpHoldings, nil
 }

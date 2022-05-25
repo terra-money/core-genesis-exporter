@@ -2,6 +2,7 @@ package astroport
 
 import (
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
@@ -24,9 +25,9 @@ import (
 // means we only need to care about UST/LUNA/bLUNA
 
 func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
-	bl.RegisterAddress(AddressAstroportLockdrop, util.DenomLUNA)
-	bl.RegisterAddress(AddressAstroportLockdrop, util.DenomUST)
-	bl.RegisterAddress(AddressAstroportLockdrop, util.DenomAUST)
+	bl.RegisterAddress(util.DenomLUNA, AddressAstroportLockdrop)
+	bl.RegisterAddress(util.DenomUST, AddressAstroportLockdrop)
+	bl.RegisterAddress(util.DenomAUST, AddressAstroportLockdrop)
 
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)

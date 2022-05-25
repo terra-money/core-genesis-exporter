@@ -2,15 +2,18 @@ package app
 
 import (
 	"fmt"
-	"github.com/terra-money/core/app/export/astroport"
 
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
-	"github.com/terra-money/core/app/export/edge"
+	"github.com/terra-money/core/app/export/apollo"
+	"github.com/terra-money/core/app/export/astroport"
 	"github.com/terra-money/core/app/export/prism"
+	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/util"
 )
 
 func ExportContracts(app *terra.TerraApp) {
+	var err error
 
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	bl := NewBlacklist()
@@ -20,16 +23,31 @@ func ExportContracts(app *terra.TerraApp) {
 
 	//fmt.Println(ExportSuberra(app))
 	//fmt.Println(alice.ExportAlice(app, bl))
-	fmt.Println(astroport.ExportAstroportLP(app, bl))
+	compoundedLps, err := exportCompounders(app)
+	astroport.ExportAstroportLP(app, bl, compoundedLps)
 	// fmt.Println(kujira.ExportKujiraStaking(app, &bl))
 	// fmt.Println(alice.ExportAlice(app, bl))
-	// lido.ExportLidoContract(app, make(map[string]types.Int), make(map[string]types.Int), &bl)
+	// err = edge.ExportContract(app, snapshot, &bl)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	// err = lido.ExportBSTLunaHolders(app, snapshot, &bl)
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// err = lido.ExportLidoRewards(app, snapshot, &bl)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
 	// ink.ExportContract(app, &bl)
-	err := prism.ExportLimitOrderContract(app, snapshot, &bl)
-	if err != nil {
-		panic(err)
-	}
-	err = edge.ExportContract(app, snapshot, &bl)
+	// err = aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), snapshot, &bl)
+	// if err != nil {
+	// 	panic(err)
+	// }
+
+	err = prism.ExportLimitOrderContract(app, snapshot, &bl)
 	if err != nil {
 		panic(err)
 	}
@@ -50,4 +68,19 @@ func NewBlacklist() util.Blacklist {
 		util.DenomLUNA: []string{},
 		util.DenomAUST: []string{},
 	}
+}
+
+func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	specLps, err := spectrum.ExportSpecVaultLPs(app)
+	if err != nil {
+		return nil, err
+	}
+	apolloLps, err := apollo.ExportApolloVaultLPs(app)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range apolloLps {
+		specLps[k] = v
+	}
+	return specLps, nil
 }

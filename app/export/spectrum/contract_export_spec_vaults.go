@@ -1,4 +1,4 @@
-package app
+package spectrum
 
 import (
 	"context"
@@ -79,9 +79,11 @@ type RewardInfo struct {
 // Exports all LP ownership from Apollo vaults
 // Resulting map is in the following format
 // {
-//   "lp_token_address_1": {
-//       "wallet_address": "amount",
-//   },
+//   "farm_addr": {
+//     "lp_token_address_1": {
+//         "wallet_address": "amount"
+//     }
+//   }
 // }
 //
 // Spec Vaults may consist of more than a single pool (e.g. Mirror vault contains all Mirror Pairs)
@@ -91,9 +93,10 @@ type RewardInfo struct {
 //    a. For each holder, call contract query `reward_info` to find the bond_amount.
 //        i. For each pool, add the LP tokens to the resulting map
 // 3. Return list of LP ownship group by LP token address and wallet address
-func ExportSpecVaultLPs(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+func ExportSpecVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
 	ctx := util.PrepCtx(app)
-	holdings := make(map[string]map[string]sdk.Int)
+	q := util.PrepWasmQueryServer(app)
+	holdings := make(map[string]map[string]map[string]sdk.Int)
 	for _, farmAddrStr := range specFarms {
 		log.Printf("farm: %s\n", farmAddrStr)
 		farmAddr, err := sdk.AccAddressFromBech32(farmAddrStr)
@@ -105,12 +108,12 @@ func ExportSpecVaultLPs(app *terra.TerraApp, q wasmtypes.QueryServer) (map[strin
 		if err != nil {
 			return nil, err
 		}
-		// log.Printf("pools: %d\n", len(pools))
-		err = getSpecFarmRewards(ctx, app.WasmKeeper, q, farmAddr, pools, holdings)
+		holding := make(map[string]map[string]sdk.Int)
+		err = getSpecFarmRewards(ctx, app.WasmKeeper, q, farmAddr, pools, holding)
+		holdings[farmAddrStr] = holding
 		if err != nil {
 			return nil, err
 		}
-		log.Printf("Lp tokens in holdings: %d\n", len(holdings))
 	}
 	return holdings, nil
 }
