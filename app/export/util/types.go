@@ -47,6 +47,16 @@ func (s SnapshotBalanceAggregateMap) Add(balances map[string]sdk.Int, denom stri
 	}
 }
 
+func (s SnapshotBalanceAggregateMap) AppendOrAddBalance(addr string, newBalance SnapshotBalance) {
+	for i, balance := range s[addr] {
+		if balance.Denom == newBalance.Denom {
+			s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
+			return
+		}
+	}
+	s[addr] = append(s[addr], newBalance)
+}
+
 func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {
 	for denom, addrList := range bl {
 		for _, addr := range addrList {
