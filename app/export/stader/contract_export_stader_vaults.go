@@ -52,6 +52,10 @@ func ExportVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalance
 			break
 		}
 
+		// TODO: Query { user_claim: { address } }
+		// if has_claimed is true then the user has claimed and we should not consider his amount for the airdrop as it ll be double counted in lunax wallets.
+		// We need to consider the claim_amount. that is the claimable amount for each user with the degen vaults rewards.
+
 		for _, userDetails := range staderVaults.UserDetails {
 			snapshot.AppendOrAddBalance(userDetails.Address, util.SnapshotBalance{
 				Denom:   util.DenomLUNA,
