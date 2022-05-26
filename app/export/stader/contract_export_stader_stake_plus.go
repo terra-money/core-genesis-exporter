@@ -37,14 +37,14 @@ var StaderFundsContracts = []string{
 	"terra1wtxc4vfk8r9rdullaqm5euxvqs3javdkyy0pz9",
 }
 
-// ExportStaderStakePlus Export staked Luna balances for users.
-func ExportStaderStakePlus(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+// ExportStakePlus Export staked Luna balances for users.
+func ExportStakePlus(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	balances := make(util.SnapshotBalanceMap)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	logger := app.Logger()
-	logger.Info("fetching Stader Stake+ balances...")
+	logger.Info("Exporting Stader Stake+ balances")
 
 	// get all stake+ contracts from registry
 	var staderContracts struct {
@@ -85,7 +85,7 @@ func ExportStaderStakePlus(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 				ContractAddress: contract,
 				QueryMsg:        []byte(query),
 			}, &stakePlusUsers); err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			if len(stakePlusUsers.UserInfo) == 0 {
@@ -93,43 +93,31 @@ func ExportStaderStakePlus(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 			}
 
 			for _, userInfo := range stakePlusUsers.UserInfo {
-
-				previousAmount := balances[userInfo.UserAddr].Balance
-				if previousAmount.IsNil() {
-					previousAmount = sdk.NewInt(0)
-				}
-
-				balances[userInfo.UserAddr] = util.SnapshotBalance{
+				snapshot.AppendOrAddBalance(userInfo.UserAddr, util.SnapshotBalance{
 					Denom:   util.DenomLUNA,
-					Balance: previousAmount.Add(userInfo.TotalAmount.Amount),
-				}
+					Balance: userInfo.TotalAmount.Amount,
+				})
 
 				// Fetch undelegation requests for this user.
 				undelegations, err := getUserUndelegations(ctx, q, contract, userInfo.UserAddr)
 				if err != nil {
-					panic(err)
+					return nil, err
 				}
 
 				// Add undelegations to users total.
 				for _, undelegation := range undelegations {
-					previousAmount := balances[userInfo.UserAddr].Balance
-					if previousAmount.IsNil() {
-						previousAmount = sdk.NewInt(0)
-					}
-
-					balances[userInfo.UserAddr] = util.SnapshotBalance{
+					snapshot.AppendOrAddBalance(userInfo.UserAddr, util.SnapshotBalance{
 						Denom:   util.DenomLUNA,
-						Balance: previousAmount.Add(undelegation.Amount),
-					}
+						Balance: undelegation.Amount,
+					})
 				}
-
 			}
+
 			offset = stakePlusUsers.UserInfo[len(stakePlusUsers.UserInfo)-1].UserAddr
 		}
-
 	}
 
-	return balances, nil
+	return snapshot, nil
 }
 
 // getUserUndelegations fetch all user undelegation requests.

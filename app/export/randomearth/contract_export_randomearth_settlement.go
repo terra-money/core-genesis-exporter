@@ -13,20 +13,20 @@ const (
 	Settlement = "terra1eek0ymmhyzja60830xhzm7k7jkrk99a60q2z2t"
 )
 
-// ExportRandomEarthSettlements Index Luna held in RandomEarth settlement contract.
-func ExportRandomEarthSettlements(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+// ExportSettlements Index Luna held in RandomEarth settlement contract.
+func ExportSettlements(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
-	holdings := make(util.BalanceMap)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	logger := app.Logger()
-	logger.Info("fetching RandomEarth settlement balances...")
+	logger.Info("Exporting RandomEarth settlement balances")
 
 	// Pull users from balances map.
 	// pub const BALANCES: Map<(&[u8], &[u8]), Uint128> = Map::new("balances");
 	prefix := util.GeneratePrefix("balances")
 	delegatorAddr, err := sdk.AccAddressFromBech32(Settlement)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), delegatorAddr, prefix, func(key, value []byte) bool {
@@ -37,20 +37,16 @@ func ExportRandomEarthSettlements(app *terra.TerraApp, snapshot util.SnapshotBal
 			// Remove quotes from the value and convert to an Int.
 			balance, ok := sdk.NewIntFromString(strings.Trim(string(value), "\""))
 			if ok && !balance.IsZero() {
-				previousAmount := holdings[correctedAddress]
-				if previousAmount.IsNil() {
-					previousAmount = sdk.NewInt(0)
-				}
-
-				holdings[correctedAddress] = previousAmount.Add(balance)
+				snapshot.AppendOrAddBalance(correctedAddress, util.SnapshotBalance{
+					Denom:   util.DenomLUNA,
+					Balance: balance,
+				})
 			}
 		}
 
 		return false
 	})
 
-	snapshot.Add(holdings, util.DenomLUNA)
 	bl.RegisterAddress(util.DenomLUNA, Settlement)
-
-	return nil
+	return snapshot, nil
 }

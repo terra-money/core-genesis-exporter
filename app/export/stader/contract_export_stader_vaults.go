@@ -14,14 +14,13 @@ const (
 	Vaults = "terra1v05vafsr8w8ar0mw040cluz0rq6pg2rrpues5r"
 )
 
-// ExportStaderVaults Export LunaX balances in Stader vaults.
-func ExportStaderVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+// ExportVaults Export LunaX balances in Stader vaults.
+func ExportVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	balances := make(util.SnapshotBalanceMap)
-
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	logger := app.Logger()
-	logger.Info("fetching Stader vault balances...")
+	logger.Info("Exporting Stader vault balances")
 
 	exchangeRate, err := GetLunaXExchangeRate(ctx, q)
 	if err != nil {
@@ -46,7 +45,7 @@ func ExportStaderVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 			ContractAddress: Vaults,
 			QueryMsg:        []byte(query),
 		}, &staderVaults); err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		if len(staderVaults.UserDetails) == 0 {
@@ -54,19 +53,14 @@ func ExportStaderVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 		}
 
 		for _, userDetails := range staderVaults.UserDetails {
-			previousAmount := balances[userDetails.Address].Balance
-			if previousAmount.IsNil() {
-				previousAmount = sdk.NewInt(0)
-			}
-
-			balances[userDetails.Address] = util.SnapshotBalance{
+			snapshot.AppendOrAddBalance(userDetails.Address, util.SnapshotBalance{
 				Denom:   util.DenomLUNA,
-				Balance: previousAmount.Add(exchangeRate.MulInt(userDetails.DepositValue).TruncateInt()),
-			}
+				Balance: exchangeRate.MulInt(userDetails.DepositValue).TruncateInt(),
+			})
 		}
 
 		offset = staderVaults.UserDetails[len(staderVaults.UserDetails)-1].Address
 	}
 
-	return balances, nil
+	return snapshot, nil
 }

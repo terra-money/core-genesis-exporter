@@ -16,12 +16,13 @@ const (
 	SCC       = "terra127vwnwgwdvq94ce4ws76ddh0c699jt40dznrn2"
 )
 
-func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+// ExportPools Export Luna holdings from the 3 staking pools.
+func ExportPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
 	logger := app.Logger()
-	logger.Info("fetching Stader staking pools...")
+	logger.Info("Exporting Stader staking pools")
 
 	// Pull users from user_registry map.
 	// pub const USER_REGISTRY: Map<(&Addr, U64Key), UserPoolInfo> = Map::new("user_registry");
@@ -41,12 +42,9 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 		return false
 	})
 
-	balances := make(util.SnapshotBalanceMap)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for _, address := range users {
-		previousAmount := balances[address].Balance
-		if previousAmount.IsNil() {
-			previousAmount = sdk.NewInt(0)
-		}
+		totalAmount := sdk.NewInt(0)
 
 		for i := 0; i < 3; i++ {
 			var poolUserInfo struct {
@@ -64,16 +62,16 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 				ContractAddress: Pools,
 				QueryMsg:        []byte(fmt.Sprintf("{\"get_user_computed_info\": {\"user_addr\": \"%s\", \"pool_id\": %d}}", address, i)),
 			}, &poolUserInfo); err != nil {
-				panic(err)
+				return nil, err
 			}
 
 			if poolUserInfo.Info.Deposit != nil {
-				previousAmount = previousAmount.Add(poolUserInfo.Info.Deposit.Staked)
+				totalAmount = totalAmount.Add(poolUserInfo.Info.Deposit.Staked)
 			}
 
 			for _, undelegation := range poolUserInfo.Info.Undelegations {
 				if !undelegation.Amount.IsZero() {
-					previousAmount = previousAmount.Add(undelegation.Amount)
+					totalAmount = totalAmount.Add(undelegation.Amount)
 				}
 			}
 		}
@@ -95,26 +93,26 @@ func ExportStaderPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 			ContractAddress: SCC,
 			QueryMsg:        []byte(fmt.Sprintf("{\"get_user\": {\"user\": \"%s\"}}", address)),
 		}, &sccUserInfo); err != nil {
-			panic(err)
+			return nil, err
 		}
 
-		previousAmount = previousAmount.Add(sccUserInfo.User.RetainedRewards)
+		totalAmount = totalAmount.Add(sccUserInfo.User.RetainedRewards)
 
 		if len(sccUserInfo.User.UserStrategyInfo) > 0 {
-			previousAmount = previousAmount.Add(sccUserInfo.User.UserStrategyInfo[0].TotalRewards)
+			totalAmount = totalAmount.Add(sccUserInfo.User.UserStrategyInfo[0].TotalRewards)
 		}
 
 		for _, undelegation := range sccUserInfo.User.Undelegations {
-			previousAmount = previousAmount.Add(undelegation.Amount)
+			totalAmount = totalAmount.Add(undelegation.Amount)
 		}
 
-		if !previousAmount.IsZero() {
-			balances[address] = util.SnapshotBalance{
+		if !totalAmount.IsZero() {
+			snapshot.AppendOrAddBalance(address, util.SnapshotBalance{
 				Denom:   util.DenomLUNA,
-				Balance: previousAmount,
-			}
+				Balance: totalAmount,
+			})
 		}
 	}
 
-	return balances, nil
+	return snapshot, nil
 }

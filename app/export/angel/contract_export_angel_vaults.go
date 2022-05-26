@@ -16,13 +16,13 @@ const (
 	DANO       = "terra1rcznds2le2eflj3y4e8ep3e4upvq04sc65wdly" // Wallet that holds UST/aUST for charities.
 )
 
-// ExportAngelEndowments Export aUST endowments
-func ExportAngelEndowments(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+// ExportEndowments Export aUST endowments
+func ExportEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	balances := make(util.BalanceMap)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	logger := app.Logger()
-	logger.Info("fetching Angel Protocol endowments...")
+	logger.Info("Exporting Angel Protocol endowments")
 
 	totalaUST := sdk.NewInt(0)
 
@@ -36,7 +36,7 @@ func ExportAngelEndowments(app *terra.TerraApp, snapshot util.SnapshotBalanceAgg
 		ContractAddress: Endowments,
 		QueryMsg:        []byte("{\"endowment_list\":{}}"),
 	}, &endowments); err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	for _, endowment := range endowments.Endowments {
@@ -55,7 +55,7 @@ func ExportAngelEndowments(app *terra.TerraApp, snapshot util.SnapshotBalanceAgg
 			ContractAddress: APANC,
 			QueryMsg:        []byte(fmt.Sprintf("{\"balance\":{\"address\":\"%s\"}}", endowment.Address)),
 		}, &apANCBalance); err != nil {
-			panic(err)
+			return nil, err
 		}
 
 		aUSTBalance := sdk.NewInt(0)
@@ -82,15 +82,13 @@ func ExportAngelEndowments(app *terra.TerraApp, snapshot util.SnapshotBalanceAgg
 		if err := util.ContractInitMsg(ctx, q, &wasmtypes.QueryContractInfoRequest{
 			ContractAddress: endowment.Address,
 		}, &initMsg); err != nil {
-			panic(err)
+			return nil, err
 		}
 
-		previousAmount := balances[initMsg.Owner]
-		if previousAmount.IsNil() {
-			previousAmount = sdk.NewInt(0)
-		}
-
-		balances[initMsg.Owner] = previousAmount.Add(aUSTBalance)
+		snapshot.AppendOrAddBalance(initMsg.Owner, util.SnapshotBalance{
+			Denom:   util.DenomAUST,
+			Balance: aUSTBalance,
+		})
 	}
 
 	logger.Info(fmt.Sprintf("total aUST indexed: %d", totalaUST.Int64()))
@@ -99,6 +97,5 @@ func ExportAngelEndowments(app *terra.TerraApp, snapshot util.SnapshotBalanceAgg
 	bl.RegisterAddress(util.DenomUST, DANO)
 	bl.RegisterAddress(util.DenomAUST, DANO)
 
-	snapshot.Add(balances, util.DenomAUST)
-	return nil
+	return snapshot, nil
 }

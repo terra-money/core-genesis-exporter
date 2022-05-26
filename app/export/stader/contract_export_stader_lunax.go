@@ -15,13 +15,13 @@ var (
 )
 
 // ExportLunaX get LunaX balance for all accounts, multiply ER
-func ExportLunaX(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportLunaX(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	balances := make(util.SnapshotBalanceMap)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	logger := app.Logger()
-	logger.Info("fetching LunaX holders and balances...")
+	logger.Info("Exporting LunaX holders")
 
 	var lunaxBalances = make(util.BalanceMap)
 	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, LunaX, lunaxBalances); err != nil {
@@ -35,14 +35,14 @@ func ExportLunaX(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceM
 
 	// balance * ER
 	for address, balance := range lunaxBalances {
-		balances[address] = util.SnapshotBalance{
+		snapshot[address] = append(snapshot[address], util.SnapshotBalance{
 			Denom:   util.DenomLUNA,
 			Balance: exchangeRate.MulInt(balance).TruncateInt(),
-		}
+		})
 	}
 
 	bl.RegisterAddress(util.DenomLUNA, LunaXState)
-	return balances, nil
+	return snapshot, nil
 }
 
 // GetLunaXExchangeRate Get the exchange rate from LunaX to Luna.
