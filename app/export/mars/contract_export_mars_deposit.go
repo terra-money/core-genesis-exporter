@@ -35,6 +35,7 @@ var (
 // 3. Find balance of assets in bank
 // 4. Assign accounts with assets proportionally
 func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting MARS")
 	lunaSs, err := ExportMarsDepositLuna(app, bl)
 	if err != nil {
 		return nil, err
@@ -74,7 +75,7 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	if err != nil {
 		return err
 	}
-	err = util.AlmostEqual("mars uluna audit", ustLockedInBank.Add(lunaLockedInBank), snapshot.SumOfDenom(util.DenomLUNA), sdk.NewInt(1000000))
+	err = util.AlmostEqual("mars uluna audit", lunaLockedInBank, snapshot.SumOfDenom(util.DenomLUNA), sdk.NewInt(1000000))
 	if err != nil {
 		return err
 	}
@@ -87,7 +88,7 @@ func ExportMarsDepositLuna(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	logger := app.Logger()
 
 	var balances = make(map[string]sdk.Int)
-	logger.Info("fetching MARS liquidity (LUNA)...")
+	logger.Info("... fetching MARS liquidity (LUNA)...")
 
 	if err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, maLunaToken, balances); err != nil {
 		return nil, err
@@ -103,7 +104,6 @@ func ExportMarsDepositLuna(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	}
 
 	sum := sdk.NewInt(0)
-	// balance * ER
 	for address, balance := range balances {
 		if balance.IsZero() {
 			continue
@@ -142,9 +142,21 @@ func ExportMarsDepositUST(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsho
 		return nil, err
 	}
 
-	// balance * ER
+	marsUstBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsMarket)
+	if err != nil {
+		return nil, err
+	}
+	totalSupply, err := util.GetCW20TotalSupply(ctx, q, maUstToken)
+	if err != nil {
+		return nil, err
+	}
+	sum := sdk.NewInt(0)
 	for address, balance := range balances {
-		balances[address] = lunaMarketState.LiquidityIndex.MulInt(balance).TruncateInt()
+		if balance.IsZero() {
+			continue
+		}
+		balances[address] = balance.Mul(marsUstBalance).Quo(totalSupply)
+		sum = sum.Add(balances[address])
 	}
 
 	snapshot := make(util.SnapshotBalanceAggregateMap)
@@ -155,12 +167,13 @@ func ExportMarsDepositUST(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsho
 }
 
 func ExportMarsSafetyFund(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info(".. Exporting safety fund")
 	ctx := util.PrepCtx(app)
 	balance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsSafetyFund)
 	if err != nil {
 		return nil, err
 	}
-	info, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), sdk.AccAddress(marsSafetyFund))
+	info, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), util.ToAddress(marsSafetyFund))
 	if err != nil {
 		return nil, err
 	}
