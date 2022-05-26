@@ -38,6 +38,16 @@ func MergeSnapshots(ss ...SnapshotBalanceAggregateMap) (s3 SnapshotBalanceAggreg
 	return s3
 }
 
+func (s SnapshotBalanceAggregateMap) AppendOrAddBalance(addr string, newBalance SnapshotBalance) {
+	for i, balance := range s[addr] {
+		if balance.Denom == newBalance.Denom {
+			s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
+			return
+		}
+	}
+	s[addr] = append(s[addr], newBalance)
+}
+
 func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
 	sum := sdk.NewInt(0)
 	for _, balances := range s {
