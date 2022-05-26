@@ -306,7 +306,7 @@ func getFieldOfMarsPositions(
 	if err != nil {
 		return err
 	}
-	fmt.Printf("number of positions: %d\n", len(positions))
+	// fmt.Printf("number of positions: %d\n", len(positions))
 
 	lpHoldings := make(map[string]sdk.Int)
 	for _, pos := range positions {
