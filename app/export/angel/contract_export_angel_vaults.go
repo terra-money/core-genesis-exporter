@@ -17,10 +17,10 @@ const (
 )
 
 // ExportAngelEndowments Export aUST endowments
-func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportAngelEndowments(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	balances := make(util.SnapshotBalanceMap)
+	balances := make(util.BalanceMap)
 	logger := app.Logger()
 	logger.Info("fetching Angel Protocol endowments...")
 
@@ -76,7 +76,7 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 
 		// Fetch endowment owner from InitMsg.
 		var initMsg struct {
-			Owner string `json:"owner"`
+			Owner string `json:"owner_sc"`
 		}
 
 		if err := util.ContractInitMsg(ctx, q, &wasmtypes.QueryContractInfoRequest{
@@ -85,15 +85,12 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 			panic(err)
 		}
 
-		previousAmount := balances[initMsg.Owner].Balance
+		previousAmount := balances[initMsg.Owner]
 		if previousAmount.IsNil() {
 			previousAmount = sdk.NewInt(0)
 		}
 
-		balances[initMsg.Owner] = util.SnapshotBalance{
-			Denom:   util.DenomAUST,
-			Balance: previousAmount.Add(aUSTBalance),
-		}
+		balances[initMsg.Owner] = previousAmount.Add(aUSTBalance)
 	}
 
 	logger.Info(fmt.Sprintf("total aUST indexed: %d", totalaUST.Int64()))
@@ -101,5 +98,7 @@ func ExportAngelEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	// These balances are counted using apANC tokens above.
 	bl.RegisterAddress(util.DenomUST, DANO)
 	bl.RegisterAddress(util.DenomAUST, DANO)
-	return balances, nil
+
+	snapshot.Add(balances, util.DenomAUST)
+	return nil
 }
