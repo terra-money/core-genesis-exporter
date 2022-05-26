@@ -5,6 +5,7 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
 	"github.com/terra-money/core/app/export/apollo"
 	"github.com/terra-money/core/app/export/astroport"
@@ -16,7 +17,10 @@ import (
 	"github.com/terra-money/core/app/export/mars"
 	"github.com/terra-money/core/app/export/mirror"
 	"github.com/terra-money/core/app/export/prism"
+	"github.com/terra-money/core/app/export/randomearth"
 	"github.com/terra-money/core/app/export/spectrum"
+	"github.com/terra-money/core/app/export/stader"
+	"github.com/terra-money/core/app/export/starterra"
 	"github.com/terra-money/core/app/export/terraswap"
 	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/app/export/whitewhale"
@@ -51,6 +55,13 @@ func ExportContracts(app *terra.TerraApp) {
 	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
 	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
 	inkSs := checkWithSs(ink.ExportContract(app, &bl))
+	lunaXSs := checkWithSs(stader.ExportLunaX(app, &bl))
+	staderPoolSs := checkWithSs(stader.ExportPools(app, &bl))
+	staderStakeSs := checkWithSs(stader.ExportStakePlus(app, &bl))
+	staderVaultSs := checkWithSs(stader.ExportVaults(app, &bl))
+	angelSs := checkWithSs(angel.ExportEndowments(app, &bl))
+	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, &bl))
+	startTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
 
 	// Independent snapshot audits and sanity checks
 	check(mirror.Audit(app, mirrorSs))
@@ -59,6 +70,8 @@ func ExportContracts(app *terra.TerraApp) {
 		terraswapSnapshot, loopSnapshot, astroportSnapshot,
 		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
+		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
+		angelSs, randomEarthSs, startTerraSs,
 	)
 
 	// Export Liquid Staking
