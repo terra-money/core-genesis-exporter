@@ -127,24 +127,24 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 	app.Logger().Info("... Replace LP tokens owned by other vaults")
 	for vaultAddr, vaultHoldings := range contractLpHolders {
 		for lpAddr, userHoldings := range vaultHoldings {
-			lpHolding, ok := lpHoldersMap[lpAddr]
-			if ok {
-				vaultAmount := lpHolding[vaultAddr]
+			lpHolding, ok1 := lpHoldersMap[lpAddr]
+			vaultAmount, ok2 := lpHolding[vaultAddr]
+			if ok1 && ok2 && vaultAmount.IsPositive() {
 				delete(lpHolding, vaultAddr)
-				app.Logger().Info(fmt.Sprintf("...... Resolved for contract: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
+				app.Logger().Info(fmt.Sprintf("...... Resolving external vault: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
 				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
 				if err != nil {
 					panic(err)
 				}
 				for addr, amount := range userHoldings {
 					if lpHolding[addr].IsNil() {
-						lpHolding[addr] = sdk.ZeroInt()
+						lpHolding[addr] = amount
 					} else {
 						lpHolding[addr] = lpHolding[addr].Add(amount)
 					}
 				}
+				util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
 			}
-			// util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
 		}
 	}
 
