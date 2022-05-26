@@ -27,7 +27,7 @@ import (
 )
 
 func ExportContracts(app *terra.TerraApp) {
-	var err error
+	// var err error
 
 	bl := NewBlacklist()
 	// snapshot := make(util.SnapshotBalanceAggregateMap)
@@ -48,11 +48,14 @@ func ExportContracts(app *terra.TerraApp) {
 
 	// Export Vaults
 	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, &bl))
+	check(whitewhale.Audit(app, whiteWhaleSs))
 	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, &bl))
+	check(kujira.Audit(app, kujiraSs))
 	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
 	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
 	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
 	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
+	check(mirror.Audit(app, mirrorSs))
 	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
 	inkSs := checkWithSs(ink.ExportContract(app, &bl))
 	lunaXSs := checkWithSs(stader.ExportLunaX(app, &bl))
@@ -62,9 +65,8 @@ func ExportContracts(app *terra.TerraApp) {
 	angelSs := checkWithSs(angel.ExportEndowments(app, &bl))
 	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, &bl))
 	startTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
-
-	// Independent snapshot audits and sanity checks
-	check(mirror.Audit(app, mirrorSs))
+	marsSs := checkWithSs(mars.ExportContract(app, &bl))
+	check(mars.Audit(app, marsSs))
 
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot, loopSnapshot, astroportSnapshot,
@@ -72,6 +74,8 @@ func ExportContracts(app *terra.TerraApp) {
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
 		angelSs, randomEarthSs, startTerraSs,
+		whiteWhaleSs, kujiraSs, prismSs,
+		edgeSs, mirrorSs, inkSs, marsSs,
 	)
 
 	// Export Liquid Staking
