@@ -269,6 +269,9 @@ func ToAddress(addr string) sdk.AccAddress {
 }
 
 func AlmostEqual(msg string, a types.Int, b types.Int, epsilon types.Int) error {
+	if a.IsNil() || b.IsNil() {
+		return fmt.Errorf("inputs nil")
+	}
 	diff := a.Sub(b)
 	var pc types.Dec
 	if a.IsZero() {
