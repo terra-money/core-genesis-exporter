@@ -20,6 +20,7 @@ import (
 	"github.com/terra-money/core/app/export/randomearth"
 	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/stader"
+	"github.com/terra-money/core/app/export/starflet"
 	"github.com/terra-money/core/app/export/starterra"
 	"github.com/terra-money/core/app/export/terraswap"
 	"github.com/terra-money/core/app/export/util"
@@ -62,6 +63,7 @@ func ExportContracts(app *terra.TerraApp) {
 	angelSs := checkWithSs(angel.ExportEndowments(app, &bl))
 	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, &bl))
 	startTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
+	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
 
 	// Independent snapshot audits and sanity checks
 	check(mirror.Audit(app, mirrorSs))
@@ -71,7 +73,7 @@ func ExportContracts(app *terra.TerraApp) {
 		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
-		angelSs, randomEarthSs, startTerraSs,
+		angelSs, randomEarthSs, startTerraSs, starfletSs,
 	)
 
 	// Export Liquid Staking
