@@ -57,7 +57,7 @@ func exportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *u
 	if err != nil {
 		return nil, err
 	}
-	workerCount := 2
+	workerCount := 5
 	jobs := make(chan (sdk.Int), lastPosition.Int64())
 	for j := int64(0); j < lastPosition.Int64(); j++ {
 		jobs <- sdk.NewInt(j)
@@ -66,23 +66,24 @@ func exportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *u
 	items := make(chan (BatchItem), lastPosition.Int64())
 	wg := sync.WaitGroup{}
 	for i := 0; i < workerCount; i++ {
-		wg.Add(i)
+		wg.Add(1)
 		go worker(&wg, app.Logger(), ctx, q, jobs, items)
 	}
 	wg.Wait()
 	close(items)
 	var balances = make(map[string]map[string]sdk.Int)
+	balances[util.DenomUST] = make(map[string]sdk.Int)
+	balances[util.DenomAUST] = make(map[string]sdk.Int)
 	for item := range items {
 		// Avoid double counting by only taking aUST amount for pre-attack snapshot
 		// UST amount in aperture is a "virtual" amount as the UST is converted to aUST and used
 		// as collateral in mirror. The UST amount field is a calculated field for the final UST amount
 		// owned by the wallet
 		if snapshotType == util.Snapshot(util.PreAttack) {
-			balances[util.AUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
+			balances[util.DenomAUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
 			bl.RegisterAddress(util.DenomAUST, item.Contract)
-			fmt.Println(item)
 		} else {
-			balances["uusd"][item.Holder] = item.Info.UstAmount
+			balances[util.DenomUST][item.Holder] = item.Info.UstAmount
 		}
 	}
 	snapshot := make(util.SnapshotBalanceAggregateMap)
