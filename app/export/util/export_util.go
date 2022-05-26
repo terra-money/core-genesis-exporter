@@ -320,6 +320,18 @@ func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr str
 	}
 }
 
+func SaveDataToFile(file string, data interface{}) error {
+	out, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(file, out, 0666)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func CachedSBA(f func(*terra.TerraApp, *Blacklist) (SnapshotBalanceAggregateMap, error), file string, app *terra.TerraApp, bl *Blacklist) (SnapshotBalanceAggregateMap, error) {
 	if _, err := os.Stat(file); err == nil {
 		data, err := os.ReadFile(file)
