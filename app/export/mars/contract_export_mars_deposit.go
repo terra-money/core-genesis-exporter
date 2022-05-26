@@ -34,23 +34,54 @@ var (
 // 2. Find total supply of maTokens
 // 3. Find balance of assets in bank
 // 4. Assign accounts with assets proportionally
-func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
-	err := ExportMarsDepositLuna(app, snapshot, bl)
+func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	lunaSs, err := ExportMarsDepositLuna(app, bl)
+	if err != nil {
+		return nil, err
+	}
+	ustSs, err := ExportMarsDepositUST(app, bl)
+	if err != nil {
+		return nil, err
+	}
+	safetySs, err := ExportMarsSafetyFund(app, bl)
+	if err != nil {
+		return nil, err
+	}
+	marsSs := util.MergeSnapshots(lunaSs, ustSs, safetySs)
+	return marsSs, nil
+}
+
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	ctx := util.PrepCtx(app)
+
+	// UST
+	ustLockedInBank, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsMarket)
 	if err != nil {
 		return err
 	}
-	err = ExportMarsDepositUST(app, snapshot, bl)
+	ustLockedInSafety, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsSafetyFund)
 	if err != nil {
 		return err
 	}
-	err = ExportMarsSafetyFund(app, snapshot, bl)
+
+	err = util.AlmostEqual("mars uust audit", ustLockedInBank.Add(ustLockedInSafety), snapshot.SumOfDenom(util.DenomUST), sdk.NewInt(1000000))
+	if err != nil {
+		return err
+	}
+
+	// Luna
+	lunaLockedInBank, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, marsMarket)
+	if err != nil {
+		return err
+	}
+	err = util.AlmostEqual("mars uluna audit", ustLockedInBank.Add(lunaLockedInBank), snapshot.SumOfDenom(util.DenomLUNA), sdk.NewInt(1000000))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func ExportMarsDepositLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportMarsDepositLuna(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
@@ -59,18 +90,17 @@ func ExportMarsDepositLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAgg
 	logger.Info("fetching MARS liquidity (LUNA)...")
 
 	if err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, maLunaToken, balances); err != nil {
-		return err
+		return nil, err
 	}
 
 	marsLunaBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, marsMarket)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	totalSupply, err := util.GetCW20TotalSupply(ctx, q, maLunaToken)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Printf("total supply of maToken: %v\n", totalSupply)
 
 	sum := sdk.NewInt(0)
 	// balance * ER
@@ -81,16 +111,15 @@ func ExportMarsDepositLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAgg
 		balances[address] = balance.Mul(marsLunaBalance).Quo(totalSupply)
 		sum = sum.Add(balances[address])
 	}
-	// There is rounding error here. Should we assign this fairly or ignore it? (<1000 uluna)
-	fmt.Printf("%s, %s, difference: %s\n", sum, marsLunaBalance, marsLunaBalance.Sub(sum))
 
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	// Black listing Mars Market Contract for deduplication later
 	bl.RegisterAddress(util.DenomLUNA, marsMarket)
 	snapshot.Add(balances, util.DenomLUNA)
-	return nil
+	return snapshot, nil
 }
 
-func ExportMarsDepositUST(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportMarsDepositUST(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
@@ -99,7 +128,7 @@ func ExportMarsDepositUST(app *terra.TerraApp, snapshot util.SnapshotBalanceAggr
 	logger.Info("fetching MARS liquidity (UST)...")
 
 	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, maUstToken, balances); err != nil {
-		return err
+		return nil, err
 	}
 
 	// get luna liquidity <> luna er
@@ -110,7 +139,7 @@ func ExportMarsDepositUST(app *terra.TerraApp, snapshot util.SnapshotBalanceAggr
 		ContractAddress: marsMarket,
 		QueryMsg:        []byte("{\"market\": {\"asset\": {\"native\": {\"denom\": \"uusd\"}}}}"),
 	}, &lunaMarketState); err != nil {
-		return err
+		return nil, err
 	}
 
 	// balance * ER
@@ -118,28 +147,30 @@ func ExportMarsDepositUST(app *terra.TerraApp, snapshot util.SnapshotBalanceAggr
 		balances[address] = lunaMarketState.LiquidityIndex.MulInt(balance).TruncateInt()
 	}
 
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	// Black listing Mars Market Contract for deduplication later
 	bl.RegisterAddress(util.DenomUST, marsMarket)
 	snapshot.Add(balances, util.DenomUST)
-	return nil
+	return snapshot, nil
 }
 
-func ExportMarsSafetyFund(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportMarsSafetyFund(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	balance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsSafetyFund)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	info, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), sdk.AccAddress(marsSafetyFund))
 	if err != nil {
-		return err
+		return nil, err
 	}
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	snapshot[info.Admin] = append(snapshot[info.Admin], util.SnapshotBalance{
 		Denom:   util.DenomUST,
 		Balance: balance,
 	})
 	bl.RegisterAddress(util.DenomUST, marsSafetyFund)
-	return nil
+	return snapshot, nil
 }
 
 // Get eventual ownership of LP tokens in the Field of Mars (leveraged yield farming) contracts
@@ -148,6 +179,7 @@ func ExportMarsSafetyFund(app *terra.TerraApp, snapshot util.SnapshotBalanceAggr
 // 3. Find how much LP tokens are deposited at the astroport generator
 // 4. Split the LP based on bond_unit and create a holding map with format {farm: {"lp_token_addr": {"wallet_addr": "amount"}}}
 func ExportFieldOfMarsLpTokens(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	app.Logger().Info("Exporting Field of Mars")
 	q := util.PrepWasmQueryServer(app)
 	ctx := util.PrepCtx(app)
 	holdings := make(map[string]map[string]map[string]sdk.Int)
