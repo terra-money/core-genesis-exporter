@@ -16,13 +16,13 @@ const (
 	KujiraUstPair   = "terra1zkyrfyq7x9v5vqnnrznn3kvj35az4f6jxftrl2"
 )
 
-func ExportKujiraVault(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Kujira vaults")
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("bid")
 	vaultAddr, err := sdk.AccAddressFromBech32(KujiraAUstVault)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	balances := make(map[string]sdk.Int)
@@ -56,20 +56,20 @@ func ExportKujiraVault(app *terra.TerraApp, snapshot util.SnapshotBalanceAggrega
 	q := util.PrepWasmQueryServer(app)
 	vaultBalance, err := util.GetCW20Balance(ctx, q, util.AUST, KujiraAUstVault)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	fmt.Printf("total in vault: %s\n", vaultBalance)
 
 	// Small rounding error (.00006%) here due to the way Kujira saves amount of aUST deposited
 	// When converting aUST to UST, the anchor exchange rate is used instead of
 	// listening to the hook of the new UST balance
 	err = util.AlmostEqual("kujira aUST", vaultBalance, util.Sum(balances), sdk.NewInt(50000000))
 	if err != nil {
-		return err
+		return nil, err
 	}
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	bl.RegisterAddress(util.DenomAUST, KujiraAUstVault)
 	snapshot.Add(balances, util.DenomAUST)
-	return nil
+	return snapshot, nil
 }
 
 // IGNORE: should be accounted for by terraswap side

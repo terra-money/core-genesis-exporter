@@ -1,7 +1,6 @@
 package astroport
 
 import (
-	"context"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -85,7 +84,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 	}
 
 	for lpAddr, lpHolders := range lpHoldersMap {
-		assertCw20Supply(ctx, qs, lpAddr, lpHolders)
+		util.AssertCw20Supply(ctx, qs, lpAddr, lpHolders)
 	}
 
 	app.Logger().Info("... LPs in Generator")
@@ -122,7 +121,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 				delete(lpHolders, AddressAstroportGenerator)
 			}
 		}
-		assertCw20Supply(ctx, qs, lpAddr, lpHolders)
+		util.AssertCw20Supply(ctx, qs, lpAddr, lpHolders)
 	}
 
 	app.Logger().Info("... Replace LP tokens owned by other vaults")
@@ -145,7 +144,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 					}
 				}
 			}
-			// assertCw20Supply(ctx, qs, lpAddr, lpHolding)
+			// util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
 		}
 	}
 
@@ -158,7 +157,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 
 		holderMap := lpHoldersMap[lpAddr]
 
-		assertCw20Supply(ctx, qs, lpAddr, holderMap)
+		util.AssertCw20Supply(ctx, qs, lpAddr, holderMap)
 
 		// iterate over LP holders, calculate how much is to be refunded
 		for userAddr, lpBalance := range holderMap {
@@ -191,20 +190,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		}
 	}
 
-	// assertCw20Supply(ctx, qs, lido.StLuna, finalBalance.FilterByDenom(util.DenomSTLUNA))
+	// util.AssertCw20Supply(ctx, qs, lido.StLuna, finalBalance.FilterByDenom(util.DenomSTLUNA))
 
 	return finalBalance, nil
-}
-
-func assertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holdings util.BalanceMap) {
-	var tokenInfo struct {
-		TotalSupply sdk.Int `json:"total_supply"`
-	}
-	util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: cw20Addr,
-		QueryMsg:        []byte("{\"token_info\":{}}"),
-	}, &tokenInfo)
-	if err := util.AlmostEqual(fmt.Sprintf("token %s supply doesnt match, ", cw20Addr), tokenInfo.TotalSupply, util.Sum(holdings), sdk.NewInt(2000000)); err != nil {
-		fmt.Println(err)
-	}
 }

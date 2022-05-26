@@ -1,8 +1,6 @@
 package util
 
 import (
-	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
@@ -28,6 +26,16 @@ func (bl Blacklist) RegisterAddress(denom string, address string) {
 
 func (bl Blacklist) GetAddressesByDenom(denom string) []string {
 	return bl[denom]
+}
+
+func MergeSnapshots(ss ...SnapshotBalanceAggregateMap) (s3 SnapshotBalanceAggregateMap) {
+	s3 = make(SnapshotBalanceAggregateMap)
+	for _, s := range ss {
+		for w, sbs := range s {
+			s3[w] = append(s3[w], sbs...)
+		}
+	}
+	return s3
 }
 
 func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
@@ -72,7 +80,7 @@ func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {
 		for _, addr := range addrList {
 			for i, snapshotBalance := range s[addr] {
 				if snapshotBalance.Denom == denom && !snapshotBalance.Balance.IsZero() {
-					fmt.Printf("Removed %s %s from %s\n", snapshotBalance.Balance, snapshotBalance.Denom, addr)
+					// fmt.Printf("Removed %s %s from %s\n", snapshotBalance.Balance, snapshotBalance.Denom, addr)
 					// Remove by setting to 0
 					s[addr][i] = SnapshotBalance{
 						Denom:   snapshotBalance.Denom,

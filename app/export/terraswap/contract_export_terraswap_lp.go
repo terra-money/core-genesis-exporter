@@ -2,6 +2,7 @@ package terraswap
 
 import (
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
@@ -10,7 +11,8 @@ import (
 
 // ExportTerraswapLiquidity scan all factory contracts, look for pairs that have luna or ust,
 // then
-func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLpHolders map[string]map[string]map[string]sdk.Int) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Terraswap")
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
 	keeper := app.WasmKeeper
@@ -20,11 +22,22 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 	var pairs = make(pairMap)
 	pairPrefix := util.GeneratePrefix("pair_info")
 	factory, _ := sdk.AccAddressFromBech32(AddressTerraswapFactory)
+	poolCount := 0
 
+	// Some pools are initiatialized with bad values
+	// Code panics when trying to get pool details
+	poolsToSkip := make(map[int]bool)
+	poolsToSkip[214] = true
+	poolsToSkip[215] = true
+
+	app.Logger().Info("... Retrieving all pools")
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), factory, pairPrefix, func(key, value []byte) bool {
+		poolCount += 1
+		if poolsToSkip[poolCount] {
+			return false
+		}
 		var pool pool
 		var pair pair
-
 		util.MustUnmarshalTMJSON(value, &pair)
 		pairAddr := sdk.AccAddress(pair.ContractAddr).String()
 
@@ -43,13 +56,12 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 			ContractAddress: pairAddr,
 			QueryMsg:        []byte("{\"pool\":{}}"),
 		}, &pool); err != nil {
-			fmt.Printf("terraswap: irregular pair, skipping: %s\n", pairAddr)
-
+			// fmt.Printf("terraswap: irregular pair, skipping: %s\n", pairAddr)
 			return false
 		}
 
 		// skip non-target pools
-		if !isTargetPool(&pool) {
+		if !isTargetPool(&pool) || pool.Assets[0].Amount.IsZero() || pool.Assets[1].Amount.IsZero() {
 			return false
 		}
 
@@ -58,16 +70,26 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 
 		return false
 	})
+	app.Logger().Info(fmt.Sprintf("...... pool count: %d", len(pools)))
 
+	app.Logger().Info("... Getting LP holders")
+	lpCount := 0
 	// for each LP token, get their token holdings
 	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
 	var info tokenInfo
 	for _, pairInfo := range pairs {
-		lpAddr := pairInfo.LiquidityToken
+		lpCount += 1
+		if lpCount%20 == 0 {
+			app.Logger().Info(fmt.Sprintf("...... processed %d", lpCount))
+		}
+		lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
+		if err != nil {
+			panic(err)
+		}
 		balanceMap := make(util.BalanceMap)
 
 		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: lpAddr,
+			ContractAddress: lpAddr.String(),
 			QueryMsg:        []byte("{\"token_info\":{}}"),
 		}, &info); err != nil {
 			panic(fmt.Errorf("failed to query token info: %v", err))
@@ -78,11 +100,35 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.Snap
 			continue
 		}
 
-		if err := util.GetCW20AccountsAndBalances(ctx, keeper, lpAddr, balanceMap); err != nil {
+		if err := util.GetCW20AccountsAndBalances(ctx, keeper, lpAddr.String(), balanceMap); err != nil {
 			panic(fmt.Errorf("failed to iterate over LP token owners: %v", err))
 		}
 
-		lpHoldersMap[lpAddr] = balanceMap
+		lpHoldersMap[lpAddr.String()] = balanceMap
+	}
+
+	app.Logger().Info("... Replace LP tokens owned by other vaults")
+	for vaultAddr, vaultHoldings := range contractLpHolders {
+		for lpAddr, userHoldings := range vaultHoldings {
+			lpHolding, ok := lpHoldersMap[lpAddr]
+			if ok {
+				vaultAmount := lpHolding[vaultAddr]
+				delete(lpHolding, vaultAddr)
+				app.Logger().Info(fmt.Sprintf("...... Resolved for contract: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
+				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
+				if err != nil {
+					panic(err)
+				}
+				for addr, amount := range userHoldings {
+					if lpHolding[addr].IsNil() {
+						lpHolding[addr] = sdk.ZeroInt()
+					} else {
+						lpHolding[addr] = lpHolding[addr].Add(amount)
+					}
+				}
+				util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
+			}
+		}
 	}
 
 	var finalBalance = make(util.SnapshotBalanceAggregateMap)

@@ -5,11 +5,19 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/aperture"
+	"github.com/terra-money/core/app/export/apollo"
 	"github.com/terra-money/core/app/export/astroport"
+	"github.com/terra-money/core/app/export/edge"
+	"github.com/terra-money/core/app/export/ink"
 	"github.com/terra-money/core/app/export/kujira"
 	"github.com/terra-money/core/app/export/lido"
+	"github.com/terra-money/core/app/export/loop"
 	"github.com/terra-money/core/app/export/mars"
+	"github.com/terra-money/core/app/export/mirror"
 	"github.com/terra-money/core/app/export/prism"
+	"github.com/terra-money/core/app/export/spectrum"
+	"github.com/terra-money/core/app/export/terraswap"
 	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/app/export/whitewhale"
 )
@@ -23,62 +31,38 @@ func ExportContracts(app *terra.TerraApp) {
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
 
-	//fmt.Println(ExportSuberra(app))
-	//fmt.Println(alice.ExportAlice(app, bl))
+	// Export Compounders
 	compoundedLps, err := exportCompounders(app)
 	if err != nil {
 		panic(err)
 	}
-	snapshot, err := astroport.ExportAstroportLP(app, bl, compoundedLps)
-	if err != nil {
-		panic(err)
-	}
 
-	fmt.Printf("%s\n", snapshot.SumOfDenom(util.DenomBLUNA))
-	fmt.Printf("%s\n", snapshot.SumOfDenom(util.DenomSTLUNA))
+	// Export DEXs
+	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
+	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
+	loopSnapshot:= checkWithSs(loop.ExportLoopLP(app, bl))
 
-	err = whitewhale.ExportWhiteWhaleVaults(app, snapshot, &bl)
-	if err != nil {
-		panic(err)
-	}
+	// Export Vaults
+	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, &bl))
+	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, &bl))
+	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
+	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
+	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
+	mirrorSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
+	inkSs := checkWithSs(ink.ExportContract(app, &bl))
 
-	err = kujira.ExportKujiraVault(app, snapshot, &bl)
-	if err != nil {
-		panic(err)
-	}
+	snapshot := util.MergeSnapshots(
+		terraswapSnapshot, loopSnapshot, astroportSnapshot,
+		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
+		edgeSs, mirrorSs, inkSs,
+	)
 
-	err = lido.ExportBSTLunaHolders(app, snapshot, bl)
-	if err != nil {
-		panic(err)
-	}
-	err = lido.ExportLidoRewards(app, snapshot, bl)
-	if err != nil {
-		panic(err)
-	}
-	err = lido.ResolveLidoLuna(app, snapshot, bl)
-	if err != nil {
-		panic(err)
-	}
-
-	// ink.ExportContract(app, &bl)
-	// err = aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), snapshot, &bl)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	err = prism.ExportLimitOrderContract(app, snapshot, &bl)
-	if err != nil {
-		panic(err)
-	}
-	err = prism.ExportContract(app, snapshot, &bl)
-	if err != nil {
-		panic(err)
-	}
-
-	err = prism.ResolveToLuna(app, snapshot, bl)
-	if err != nil {
-		panic(err)
-	}
+	// Export Liquid Staking
+	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
+	check(lido.ExportLidoRewards(app, snapshot, bl))
+	check(lido.ResolveLidoLuna(app, snapshot, bl))
+	check(prism.ExportContract(app, snapshot, &bl))
+	check(prism.ResolveToLuna(app, snapshot, bl))
 }
 
 func NewBlacklist() util.Blacklist {
@@ -91,20 +75,20 @@ func NewBlacklist() util.Blacklist {
 
 func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
 	finalMap := make(map[string]map[string]map[string]sdk.Int)
-	// specLps, err := spectrum.ExportSpecVaultLPs(app)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// for k, v := range specLps {
-	// 	finalMap[k] = v
-	// }
-	// apolloLps, err := apollo.ExportApolloVaultLPs(app)
-	// if err != nil {
-	// 	return nil, err
-	// }
-	// for k, v := range apolloLps {
-	// 	finalMap[k] = v
-	// }
+	specLps, err := spectrum.ExportSpecVaultLPs(app)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range specLps {
+		finalMap[k] = v
+	}
+	apolloLps, err := apollo.ExportApolloVaultLPs(app)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range apolloLps {
+		finalMap[k] = v
+	}
 	marsLps, err := mars.ExportFieldOfMarsLpTokens(app)
 	if err != nil {
 		return nil, err
@@ -113,4 +97,17 @@ func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sd
 		finalMap[k] = v
 	}
 	return finalMap, nil
+}
+
+func checkWithSs(snapshot util.SnapshotBalanceAggregateMap, err error) util.SnapshotBalanceAggregateMap {
+	if err != nil {
+		panic(err)
+	}
+	return snapshot
+}
+
+func check(err error) {
+	if err != nil {
+		panic(err)
+	}
 }

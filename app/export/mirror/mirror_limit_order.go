@@ -25,14 +25,13 @@ func ExportLimitOrderContract(
 	app *terra.TerraApp,
 	bl *util.Blacklist,
 ) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Mirror Limit Orders")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	orders, err := getAllOrders(ctx, q)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf("%d\n", len(orders))
-	// fmt.Printf("%v\n", orders[0])
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for _, order := range orders {
 		for _, denom := range MirrorLimitOrderTokens {
@@ -44,7 +43,6 @@ func ExportLimitOrderContract(
 			}
 		}
 	}
-	fmt.Printf("%v\n", snapshot)
 
 	// Blacklist resolved contracts
 	for _, denom := range MirrorLimitOrderTokens {
@@ -60,12 +58,12 @@ func ExportLimitOrderContract(
 			contractBalance, err = util.GetNativeBalance(ctx, app.BankKeeper, denom, MirrorLimitOrder)
 		}
 		if err != nil {
-			return nil, err
+			return snapshot, err
 		}
 		sumOfSnapshot := snapshot.SumOfDenom(denom)
 		err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
 		if err != nil {
-			return nil, err
+			return snapshot, err
 		}
 	}
 	return snapshot, nil

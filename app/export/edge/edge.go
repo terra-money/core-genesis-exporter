@@ -30,13 +30,14 @@ var (
 	}
 )
 
-func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Edge Protocol")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
 	markets, err := getMarkets(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	holdings := make(map[string]map[string]sdk.Int)
 	for _, market := range markets {
@@ -46,12 +47,12 @@ func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateM
 		}
 		totalSupply, err := util.GetCW20TotalSupply(ctx, q, market.Etoken)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		accountBalances := make(map[string]sdk.Int)
 		err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, market.Etoken, accountBalances)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		holding := make(map[string]sdk.Int)
 		for k, v := range accountBalances {
@@ -62,17 +63,18 @@ func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateM
 		// Assigning insurance fund to protocol admin
 		poolAddr, err := sdk.AccAddressFromBech32(EdgeProtocolPool)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		info, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), poolAddr)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		holding[info.Admin] = market.InsuranceAmount.TruncateInt()
 		holdings[market.Underlying] = holding
 		bl.RegisterAddress(util.MapContractToDenom(market.Underlying), EdgeProtocolPool)
 	}
 
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for asset, holding := range holdings {
 		for addr, b := range holding {
 			snapshot[addr] = append(snapshot[addr], util.SnapshotBalance{
@@ -81,18 +83,7 @@ func ExportContract(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateM
 			})
 		}
 	}
-
-	// header := []string{"token", "address", "amount"}
-	// data := [][]string{}
-	// for token, holding := range holdings {
-	// 	for wallet, amount := range holding {
-	// 		if !amount.IsZero() {
-	// 			data = append(data, []string{token, wallet, amount.String()})
-	// 		}
-	// 	}
-	// }
-	// util.ToCsv("/home/ec2-user/edge.csv", header, data)
-	return nil
+	return snapshot, nil
 }
 
 func contains(a []string, i string) bool {

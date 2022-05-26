@@ -53,24 +53,24 @@ type Vault struct {
 // 2. Individual interest vaults per user (InkVault)
 func ExportContract(
 	app *terra.TerraApp,
-	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
-) error {
+) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Ink Protocol")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	deposits, err := getAllDeposits(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	partyInfos, err := getAllParties(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	vaults, err := getAllVaults(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	for _, party := range partyInfos {
@@ -102,10 +102,11 @@ func ExportContract(
 
 	totalAUstLocked, err := getTotalAUstLocked(ctx, q, vaults)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	totalDeposits := util.Sum(deposits)
 
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for addr, amount := range deposits {
 		aUstBalance := amount.Mul(totalAUstLocked).Quo(totalDeposits)
 		snapshot[addr] = append(snapshot[addr], util.SnapshotBalance{
@@ -114,7 +115,7 @@ func ExportContract(
 		})
 	}
 	bl.RegisterAddress(util.DenomAUST, InkAUstVault)
-	return nil
+	return snapshot, nil
 }
 
 func getAllDeposits(ctx context.Context, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {

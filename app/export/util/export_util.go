@@ -271,7 +271,7 @@ func ToAddress(addr string) sdk.AccAddress {
 func AlmostEqual(msg string, a types.Int, b types.Int, epsilon types.Int) error {
 	diff := a.Sub(b)
 	if !diff.Abs().LT(epsilon) {
-		return fmt.Errorf("%s difference: %s, a: %s, b: %s\n", msg, diff, a, b)
+		return fmt.Errorf("%s difference: %s, a: %s, b: %s\n", msg, types.NewDecFromInt(diff).QuoInt(a), a, b)
 	}
 	return nil
 }
@@ -286,10 +286,23 @@ func Xor(b1 map[string]sdk.Int, b2 map[string]sdk.Int) (b3 map[string][]sdk.Int)
 	for k, v := range b2 {
 		if b1[k].IsNil() || !b1[k].Equal(v) {
 			if len(b3[k]) == 0 {
-				b3[k] =append(b3[k], sdk.Int{})
+				b3[k] = append(b3[k], sdk.Int{})
 			}
 			b3[k] = append(b3[k], v)
 		}
 	}
 	return b3
+}
+
+func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holdings BalanceMap) {
+	var tokenInfo struct {
+		TotalSupply sdk.Int `json:"total_supply"`
+	}
+	ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: cw20Addr,
+		QueryMsg:        []byte("{\"token_info\":{}}"),
+	}, &tokenInfo)
+	if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match, ", cw20Addr), tokenInfo.TotalSupply, Sum(holdings), sdk.NewInt(2000000)); err != nil {
+		fmt.Println(err)
+	}
 }

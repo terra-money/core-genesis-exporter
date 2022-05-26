@@ -40,12 +40,12 @@ type BatchItem struct {
 	} `json:"info"`
 }
 
-func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	lastPosition, err := getApertureLastPositionId(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	workerCount := 50
 	jobs := make(chan (sdk.Int), lastPosition.Int64())
@@ -75,9 +75,10 @@ func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, snaps
 			balances["uusd"][item.Holder] = item.Info.UstAmount
 		}
 	}
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	snapshot.Add(balances[util.DenomAUST], util.DenomAUST)
 	snapshot.Add(balances[util.DenomUST], util.DenomUST)
-	return nil
+	return snapshot, nil
 }
 
 func getApertureLastPositionId(ctx context.Context, q wasmtypes.QueryServer) (sdk.Int, error) {

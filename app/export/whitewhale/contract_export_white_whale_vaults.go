@@ -11,7 +11,7 @@ var (
 	whiteWhaleVault = "terra1ec3r2esp9cqekqqvn0wd6nwrjslnwxm7fh8egy"
 )
 
-func ExportWhiteWhaleVaults(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Whitewhale vaults")
 	bl.RegisterAddress(util.DenomAUST, whiteWhaleVault)
 	bl.RegisterAddress(util.DenomUST, whiteWhaleVault)
@@ -20,21 +20,21 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, snapshot util.SnapshotBalanceAg
 	vUstHoldings := make(map[string]sdk.Int)
 	err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, whiteWhaleVUST, vUstHoldings)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	totalSupply, err := util.GetCW20TotalSupply(ctx, q, whiteWhaleVUST)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	aUstBalance, err := util.GetCW20Balance(ctx, q, util.AUST, whiteWhaleVault)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	ustBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, whiteWhaleVault)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	holdings := make(map[string]map[string]sdk.Int)
@@ -48,15 +48,16 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, snapshot util.SnapshotBalanceAg
 
 	err = util.AlmostEqual("whitewhale ust", ustBalance, util.Sum(holdings[util.DenomUST]), sdk.NewInt(10000))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	err = util.AlmostEqual("whitewhale aust", aUstBalance, util.Sum(holdings[util.DenomAUST]), sdk.NewInt(10000))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	snapshot.Add(holdings[util.DenomUST], util.DenomUST)
 	snapshot.Add(holdings[util.DenomAUST], util.DenomUST)
 
-	return nil
+	return snapshot, nil
 }
