@@ -166,8 +166,6 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 		return err
 	}
 
-	fmt.Println(string(response.QueryResult))
-
 	unmarshalErr := json.Unmarshal(response.QueryResult, res)
 	if unmarshalErr != nil {
 		return unmarshalErr
@@ -271,9 +269,18 @@ func ToAddress(addr string) sdk.AccAddress {
 }
 
 func AlmostEqual(msg string, a types.Int, b types.Int, epsilon types.Int) error {
+	if a.IsNil() || b.IsNil() {
+		return fmt.Errorf("inputs nil")
+	}
 	diff := a.Sub(b)
+	var pc types.Dec
+	if a.IsZero() {
+		pc = sdk.NewDec(1)
+	} else {
+		pc = types.NewDecFromInt(diff).QuoInt(a)
+	}
 	if !diff.Abs().LT(epsilon) {
-		return fmt.Errorf("%s difference: %s, a: %s, b: %s\n", msg, types.NewDecFromInt(diff).QuoInt(a), a, b)
+		return fmt.Errorf("%s difference: %s, a: %s, b: %s", msg, pc, a, b)
 	}
 	return nil
 }
@@ -304,7 +311,7 @@ func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr str
 		ContractAddress: cw20Addr,
 		QueryMsg:        []byte("{\"token_info\":{}}"),
 	}, &tokenInfo)
-	if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match, ", cw20Addr), tokenInfo.TotalSupply, Sum(holdings), sdk.NewInt(2000000)); err != nil {
+	if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match\n", cw20Addr), tokenInfo.TotalSupply, Sum(holdings), sdk.NewInt(2000000)); err != nil {
 		fmt.Println(err)
 	}
 }

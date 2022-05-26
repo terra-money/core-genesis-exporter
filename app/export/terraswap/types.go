@@ -16,6 +16,31 @@ var (
 	AddressCLUNA  = "terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"
 	AddressPLUNA  = "terra1tlgelulz9pdkhls6uglfn5lmxarx7f2gxtdzh2"
 	AddressLUNAX  = "terra17y9qkl8dfkeg4py7n0g5407emqnemc3yqk5rup"
+
+	StakingContracts = []string{
+		"terra1euaquddnk5eq495x7jjv0c8d5aldx39jeffsxh",
+		"terra1a7fwra93sw8xy5wz779crks07u3ttf3u4mslfp",
+		"terra160jxfrcwrn6nn5ns3zc9qj9c3rnkzlhnnghr9x",
+		"terra1cf9q9lq7tdfju95sdw78y9e34a6qrq3rrc6dre",
+		"terra175ueft8w9vpkj9jvehyjhkpk6szy8unq4lns8n",
+		"terra1hs4ev0ghwn4wr888jwm56eztfpau6rjcd8mczc",
+		"terra1ude6ggsvwrhefw2dqjh4j6r7fdmu9nk6nf2z32",
+		"terra12kzewegufqprmzl20nhsuwjjq6xu8t8ppzt30a",
+		"terra1jprduh6mc5tamy08pvw4c7wh7m7gcu2ej0c407",
+		"terra1snra29afr9efzt6l34wfnhj3jn90hq6rx8jhje",
+		"terra1gw80vdfk028d5qywl86c4culg7q286748c0thz",
+		"terra1pafra8qj9efnxhv5jq7n4qy0mq5pge8w4k8s2k",
+		"terra1pyl3u0v0y7szlj8njctkhys9fvtsl6wva00fd5",
+		"terra10eyxljyqkcvhs4dgr534hk0wehc28tz6gwnh8a",
+		"terra1897an2xux840p9lrh6py3ryankc6mspw49xse3",
+		"terra1munkej78p9ckry0p6vvkkk94c89tnyjhnxfskl",
+		"terra1le3a67j4khkjhyytkllxre60dvywm43ztq2s8t",
+		"terra1u94zwrreyz3t0jx25nl7800pxsrk6e6dwjqpsx",
+		"terra19nek85kaqrvzlxygw20jhy08h3ryjf5kg4ep3l",
+		"terra1n9a0y0gyn87wnwwa7p8rpjhkljcsls6kvaywc8",
+		"terra1fvq04l6pzslhxf7yyxhfmz5hv64xsye8vcmgzt",
+		"terra1hxyyjpu8548ccwth9pnc5ztgpupnn2a3c9s0f8",
+	}
 )
 
 type (

@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	log "github.com/tendermint/tendermint/libs/log"
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
@@ -41,13 +42,14 @@ type BatchItem struct {
 }
 
 func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Aperture (this takes a while)")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	lastPosition, err := getApertureLastPositionId(ctx, q)
 	if err != nil {
 		return nil, err
 	}
-	workerCount := 50
+	workerCount := 2
 	jobs := make(chan (sdk.Int), lastPosition.Int64())
 	for j := int64(0); j < lastPosition.Int64(); j++ {
 		jobs <- sdk.NewInt(j)
@@ -57,7 +59,7 @@ func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *u
 	wg := sync.WaitGroup{}
 	for i := 0; i < workerCount; i++ {
 		wg.Add(i)
-		go worker(&wg, ctx, q, jobs, items)
+		go worker(&wg, app.Logger(), ctx, q, jobs, items)
 	}
 	wg.Wait()
 	close(items)
@@ -95,18 +97,20 @@ func getApertureLastPositionId(ctx context.Context, q wasmtypes.QueryServer) (sd
 	return nextPositionResponse.NextPosition, nil
 }
 
-func worker(wg *sync.WaitGroup, ctx context.Context, q wasmtypes.QueryServer, jobs <-chan (sdk.Int), results chan<- (BatchItem)) {
+func worker(wg *sync.WaitGroup, log log.Logger, ctx context.Context, q wasmtypes.QueryServer, jobs <-chan (sdk.Int), results chan<- (BatchItem)) {
 	defer wg.Done()
 	for j := range jobs {
-		err := getApertureOpenPositions(ctx, q, j, results)
+		err := getApertureOpenPositions(log, ctx, q, j, results)
 		if err != nil {
 			panic(err)
 		}
 	}
 }
 
-func getApertureOpenPositions(ctx context.Context, q wasmtypes.QueryServer, positionId sdk.Int, results chan<- (BatchItem)) error {
-	fmt.Printf("position_id: %s\n", positionId)
+func getApertureOpenPositions(log log.Logger, ctx context.Context, q wasmtypes.QueryServer, positionId sdk.Int, results chan<- (BatchItem)) error {
+	if positionId.ModRaw(500).IsZero() {
+		log.Info(fmt.Sprintf("... Position %s", positionId))
+	}
 	var batchResponse BatchResponse
 	positionQuery := fmt.Sprintf("{\"position_id\":\"%s\", \"chain_id\": 3 }", positionId)
 	query := fmt.Sprintf("{\"batch_get_position_info\": {\"positions\": [%s]}}", positionQuery)
