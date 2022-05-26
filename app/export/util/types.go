@@ -48,6 +48,16 @@ func (s SnapshotBalanceAggregateMap) AppendOrAddBalance(addr string, newBalance 
 	s[addr] = append(s[addr], newBalance)
 }
 
+func (s SnapshotBalanceAggregateMap) GetAddrBalance(addr string, denom string) sdk.Int {
+	sum := sdk.NewInt(0)
+	for _, balance := range s[addr] {
+		if balance.Denom == denom {
+			sum = sum.Add(balance.Balance)
+		}
+	}
+	return sum
+}
+
 func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
 	sum := sdk.NewInt(0)
 	for _, balances := range s {

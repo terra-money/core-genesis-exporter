@@ -52,6 +52,9 @@ func ExportContracts(app *terra.TerraApp) {
 	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
 	inkSs := checkWithSs(ink.ExportContract(app, &bl))
 
+	// Independent snapshot audits and sanity checks
+	check(mirror.Audit(app, mirrorSs))
+
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot, loopSnapshot, astroportSnapshot,
 		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
@@ -64,6 +67,9 @@ func ExportContracts(app *terra.TerraApp) {
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ExportContract(app, snapshot, &bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
+
+	// Final audits and sanity checks (optional?)
+	check(mirror.FinalAudit(app, mirrorSs, snapshot))
 }
 
 func NewBlacklist() util.Blacklist {
