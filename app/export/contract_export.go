@@ -21,6 +21,7 @@ import (
 	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/stader"
 	"github.com/terra-money/core/app/export/starterra"
+	"github.com/terra-money/core/app/export/suberra"
 	"github.com/terra-money/core/app/export/terraswap"
 	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/app/export/whitewhale"
@@ -47,6 +48,8 @@ func ExportContracts(app *terra.TerraApp) {
 	loopSnapshot := checkWithSs(loop.ExportLoopLP(app, bl))
 
 	// Export Vaults
+	suberraSs := checkWithSs(suberra.ExportSuberra(app, &bl))
+	check(suberra.Audit(app, suberraSs))
 	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, &bl))
 	check(whitewhale.Audit(app, whiteWhaleSs))
 	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, &bl))
@@ -71,7 +74,9 @@ func ExportContracts(app *terra.TerraApp) {
 	check(mars.Audit(app, marsSs))
 
 	snapshot := util.MergeSnapshots(
-		terraswapSnapshot, loopSnapshot, astroportSnapshot,
+		terraswapSnapshot,
+		loopSnapshot,
+		astroportSnapshot,
 		whiteWhaleSs, kujiraSs, prismSs,
 		apertureSs,
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
