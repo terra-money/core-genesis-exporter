@@ -19,7 +19,7 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.Snaps
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	vUstHoldings := make(map[string]sdk.Int)
-	err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, whiteWhaleVUST, vUstHoldings)
+	err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, whiteWhaleVUST, vUstHoldings)
 	if err != nil {
 		return nil, err
 	}
@@ -33,6 +33,7 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.Snaps
 	if err != nil {
 		return nil, err
 	}
+
 	ustBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, whiteWhaleVault)
 	if err != nil {
 		return nil, err
@@ -58,6 +59,7 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.Snaps
 	if err != nil {
 		return nil, err
 	}
+
 	snapshot[ci.Admin] = snapshot[whitewhaleTreasury]
 	delete(snapshot, whitewhaleTreasury)
 	return snapshot, nil
