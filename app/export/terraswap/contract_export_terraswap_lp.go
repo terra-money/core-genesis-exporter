@@ -1,11 +1,14 @@
 package terraswap
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
+	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -79,7 +82,7 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	var info tokenInfo
 	for _, pairInfo := range pairs {
 		lpCount += 1
-		if lpCount%20 == 0 {
+		if lpCount%100 == 0 {
 			app.Logger().Info(fmt.Sprintf("...... processed %d", lpCount))
 		}
 		lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
@@ -107,25 +110,56 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 		lpHoldersMap[lpAddr.String()] = balanceMap
 	}
 
+	// getAllStakingContracts(ctx, keeper, lpHoldersMap)
+	app.Logger().Info("... Resolving staking ownership")
+	stakingHoldings, err := getStakingHoldings(ctx, keeper)
+	if err != nil {
+		return nil, err
+	}
+	for lp, staking := range stakingHoldings {
+		if lpHolding, ok := lpHoldersMap[lp]; ok {
+			if amount, okk := lpHolding[staking.StakingAddr]; okk {
+				app.Logger().Info(fmt.Sprintf("...... Resolving stakers: %s, Added %d users, amount %s",
+					staking.StakingAddr, len(staking.Holdings), util.Sum(staking.Holdings),
+				))
+				err := util.AlmostEqual(
+					fmt.Sprintf("terraswap staking %s lp %s\n", staking.StakingAddr, lp),
+					amount,
+					util.Sum(staking.Holdings),
+					sdk.NewInt(1000000),
+				)
+				if err != nil {
+					// fmt.Println(err)
+					staking.Holdings = normalizeStakingHoldings(staking.Holdings, amount)
+				}
+				delete(lpHolding, staking.StakingAddr)
+				lpHoldersMap[lp] = util.MergeMaps(lpHolding, staking.Holdings)
+				util.AssertCw20Supply(ctx, qs, lp, lpHoldersMap[lp])
+			}
+		}
+	}
 	app.Logger().Info("... Replace LP tokens owned by other vaults")
 	for vaultAddr, vaultHoldings := range contractLpHolders {
 		for lpAddr, userHoldings := range vaultHoldings {
 			lpHolding, ok := lpHoldersMap[lpAddr]
 			if ok {
 				vaultAmount := lpHolding[vaultAddr]
-				delete(lpHolding, vaultAddr)
-				app.Logger().Info(fmt.Sprintf("...... Resolved for contract: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
-				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
+				if vaultAmount.IsNil() || vaultAmount.IsZero() {
+					continue
+				}
+				app.Logger().Info(fmt.Sprintf("...... Resolving external vaults: %s lp %s", vaultAddr, lpAddr))
+				err := util.AlmostEqual("vault amount inconsistent", vaultAmount, util.Sum(userHoldings), sdk.NewInt(5000000))
 				if err != nil {
 					panic(err)
 				}
 				for addr, amount := range userHoldings {
 					if lpHolding[addr].IsNil() {
-						lpHolding[addr] = sdk.ZeroInt()
+						lpHolding[addr] = amount
 					} else {
 						lpHolding[addr] = lpHolding[addr].Add(amount)
 					}
 				}
+				delete(lpHolding, vaultAddr)
 				util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
 			}
 		}
@@ -172,4 +206,87 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	}
 
 	return finalBalance, nil
+}
+
+type stakingInitMsg struct {
+	Token                string        `json:"token"`
+	LpToken              string        `json:"lp_token"`
+	StakingToken         string        `json:"staking_token"`
+	Pair                 string        `json:"pair"`
+	DistributionSchedule []interface{} `json:"distribution_schedule"`
+}
+
+type stakingHolders struct {
+	StakingAddr string
+	Holdings    util.BalanceMap
+}
+
+func normalizeStakingHoldings(vaultHolding util.BalanceMap, vaultTotal sdk.Int) util.BalanceMap {
+	shareTotal := util.Sum(vaultHolding)
+	normalizedHolding := make(util.BalanceMap)
+	for add, b := range vaultHolding {
+		normalizedHolding[add] = sdk.NewDecFromInt(b).MulInt(vaultTotal).QuoInt(shareTotal).TruncateInt()
+	}
+	return normalizedHolding
+}
+
+func getStakingHoldings(ctx context.Context, k wasmkeeper.Keeper) (map[string]stakingHolders, error) {
+
+	holdings := make(map[string]stakingHolders)
+	for _, staking := range StakingContracts {
+		stakingAddr := util.ToAddress(staking)
+		var initMsg stakingInitMsg
+		info, err := k.GetContractInfo(sdk.UnwrapSDKContext(ctx), stakingAddr)
+		if err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(info.InitMsg, &initMsg); err != nil {
+			return nil, err
+		}
+		var lpAddress string
+		if initMsg.StakingToken != "" {
+			lpAddress = initMsg.StakingToken
+		} else if initMsg.LpToken != "" {
+			lpAddress = initMsg.LpToken
+		} else {
+			continue
+		}
+
+		prefix := util.GeneratePrefix("reward")
+		balances := make(map[string]sdk.Int)
+		k.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), stakingAddr, prefix, func(key, value []byte) bool {
+			var reward struct {
+				Amount sdk.Int `json:"bond_amount"`
+			}
+			json.Unmarshal(value, &reward)
+			holderAddr := sdk.AccAddress(key)
+			balances[holderAddr.String()] = reward.Amount
+			return false
+		})
+		holdings[lpAddress] = stakingHolders{
+			StakingAddr: staking,
+			Holdings:    balances,
+		}
+	}
+	return holdings, nil
+}
+
+// This was run pre-export to get a list of staking contracts
+func getAllStakingContracts(ctx context.Context, k wasmkeeper.Keeper, holders map[string]util.BalanceMap) error {
+	for _, balances := range holders {
+		for addr, balance := range balances {
+			var initMsg stakingInitMsg
+			info, err := k.GetContractInfo(sdk.UnwrapSDKContext(ctx), util.ToAddress(addr))
+			if err != nil {
+				continue
+			}
+			if err = json.Unmarshal(info.InitMsg, &initMsg); err != nil {
+				continue
+			}
+			if len(initMsg.DistributionSchedule) > 0 {
+				fmt.Printf("%s,%s,%s\n", addr, initMsg.LpToken, balance)
+			}
+		}
+	}
+	return nil
 }
