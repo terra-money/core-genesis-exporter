@@ -51,14 +51,20 @@ func (s SnapshotBalanceAggregateMap) Add(balances map[string]sdk.Int, denom stri
 	}
 }
 
-func (s SnapshotBalanceAggregateMap) AppendOrAddBalance(addr string, newBalance SnapshotBalance) {
-	for i, balance := range s[addr] {
-		if balance.Denom == newBalance.Denom {
-			s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
-			return
+func (s SnapshotBalanceAggregateMap) FilterByDenom(denom string) map[string]sdk.Int {
+	filtered := make(map[string]sdk.Int)
+	for w, sbs := range s {
+		for _, sb := range sbs {
+			if sb.Denom == denom && sb.Balance.IsPositive() {
+				if filtered[w].IsNil() {
+					filtered[w] = sb.Balance
+				} else {
+					filtered[w] = filtered[w].Add(sb.Balance)
+				}
+			}
 		}
 	}
-	s[addr] = append(s[addr], newBalance)
+	return filtered
 }
 
 func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {

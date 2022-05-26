@@ -275,3 +275,21 @@ func AlmostEqual(msg string, a types.Int, b types.Int, epsilon types.Int) error 
 	}
 	return nil
 }
+
+func Xor(b1 map[string]sdk.Int, b2 map[string]sdk.Int) (b3 map[string][]sdk.Int) {
+	b3 = make(map[string][]sdktypes.Int)
+	for k, v := range b1 {
+		if b2[k].IsNil() || !b2[k].Equal(v) {
+			b3[k] = append(b3[k], v)
+		}
+	}
+	for k, v := range b2 {
+		if b1[k].IsNil() || !b1[k].Equal(v) {
+			if len(b3[k]) == 0 {
+				b3[k] =append(b3[k], sdk.Int{})
+			}
+			b3[k] = append(b3[k], v)
+		}
+	}
+	return b3
+}

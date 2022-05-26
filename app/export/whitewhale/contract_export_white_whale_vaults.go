@@ -1,12 +1,9 @@
 package whitewhale
 
 import (
-	"fmt"
-
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
-	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
 var (
@@ -14,38 +11,52 @@ var (
 	whiteWhaleVault = "terra1ec3r2esp9cqekqqvn0wd6nwrjslnwxm7fh8egy"
 )
 
-func ExportWhiteWhaleVaults(app *terra.TerraApp, q wasmtypes.QueryServer) (map[string]map[string]sdk.Int, error) {
+func ExportWhiteWhaleVaults(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+	app.Logger().Info("Exporting Whitewhale vaults")
+	bl.RegisterAddress(util.DenomAUST, whiteWhaleVault)
+	bl.RegisterAddress(util.DenomUST, whiteWhaleVault)
 	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
 	vUstHoldings := make(map[string]sdk.Int)
 	err := util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, whiteWhaleVUST, vUstHoldings)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fmt.Printf("no. of holders: %d\n", len(vUstHoldings))
 
 	totalSupply, err := util.GetCW20TotalSupply(ctx, q, whiteWhaleVUST)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fmt.Printf("total supply: %s\n", totalSupply)
 
-	aUstBalance, err := util.GetCW20Balance(ctx, q, whiteWhaleVUST, whiteWhaleVault)
+	aUstBalance, err := util.GetCW20Balance(ctx, q, util.AUST, whiteWhaleVault)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	fmt.Printf("aust balance: %s\n", aUstBalance)
-
-	whiteWhaleVaultAddr, err := sdk.AccAddressFromBech32(whiteWhaleVault)
+	ustBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, whiteWhaleVault)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	ustBalance := app.BankKeeper.GetBalance(sdk.UnwrapSDKContext(ctx), whiteWhaleVaultAddr, util.DenomUST).Amount
 
 	holdings := make(map[string]map[string]sdk.Int)
+	holdings[util.DenomUST] = make(map[string]sdk.Int)
+	holdings[util.DenomAUST] = make(map[string]sdk.Int)
+
 	for wallet, holding := range vUstHoldings {
-		holdings[util.DenomUST][wallet] = holding.Mod(ustBalance).Quo(totalSupply)
-		holdings[util.AUST][wallet] = holding.Mod(aUstBalance).Quo(totalSupply)
+		holdings[util.DenomUST][wallet] = holding.Mul(ustBalance).Quo(totalSupply)
+		holdings[util.DenomAUST][wallet] = holding.Mul(aUstBalance).Quo(totalSupply)
 	}
-	return holdings, nil
+
+	err = util.AlmostEqual("whitewhale ust", ustBalance, util.Sum(holdings[util.DenomUST]), sdk.NewInt(10000))
+	if err != nil {
+		return err
+	}
+	err = util.AlmostEqual("whitewhale aust", aUstBalance, util.Sum(holdings[util.DenomAUST]), sdk.NewInt(10000))
+	if err != nil {
+		return err
+	}
+
+	snapshot.Add(holdings[util.DenomUST], util.DenomUST)
+	snapshot.Add(holdings[util.DenomAUST], util.DenomUST)
+
+	return nil
 }

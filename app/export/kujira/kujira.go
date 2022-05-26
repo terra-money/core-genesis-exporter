@@ -17,6 +17,7 @@ const (
 )
 
 func ExportKujiraVault(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
+	app.Logger().Info("Exporting Kujira vaults")
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("bid")
 	vaultAddr, err := sdk.AccAddressFromBech32(KujiraAUstVault)
@@ -35,9 +36,9 @@ func ExportKujiraVault(app *terra.TerraApp, snapshot util.SnapshotBalanceAggrega
 		if err != nil {
 			panic(err)
 		}
-		// if bid.Amount.IsZero() {
-		// 	return false
-		// }
+		if bid.Amount.IsZero() {
+			return false
+		}
 
 		bidderAddr, err := util.AccAddressFromBase64(bid.Bidder)
 		if err != nil {

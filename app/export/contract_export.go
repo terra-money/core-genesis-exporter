@@ -11,21 +11,17 @@ import (
 	"github.com/terra-money/core/app/export/mars"
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/util"
+	"github.com/terra-money/core/app/export/whitewhale"
 )
 
 func ExportContracts(app *terra.TerraApp) {
 	var err error
 
-	snapshot := make(util.SnapshotBalanceAggregateMap)
 	bl := NewBlacklist()
+	// snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
-
-	err = kujira.ExportKujiraVault(app, snapshot, &bl)
-	if err != nil {
-		panic(err)
-	}
 
 	//fmt.Println(ExportSuberra(app))
 	//fmt.Println(alice.ExportAlice(app, bl))
@@ -33,19 +29,29 @@ func ExportContracts(app *terra.TerraApp) {
 	if err != nil {
 		panic(err)
 	}
-	astroport.ExportAstroportLP(app, bl, compoundedLps)
-	// fmt.Println(kujira.ExportKujiraStaking(app, &bl))
-	// fmt.Println(alice.ExportAlice(app, bl))
-	// err = edge.ExportContract(app, snapshot, &bl)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	err = lido.ExportBSTLunaHolders(app, snapshot, &bl)
+	snapshot, err := astroport.ExportAstroportLP(app, bl, compoundedLps)
 	if err != nil {
 		panic(err)
 	}
-	err = lido.ExportLidoRewards(app, snapshot, &bl)
+
+	fmt.Printf("%s\n", snapshot.SumOfDenom(util.DenomBLUNA))
+	fmt.Printf("%s\n", snapshot.SumOfDenom(util.DenomSTLUNA))
+
+	err = whitewhale.ExportWhiteWhaleVaults(app, snapshot, &bl)
+	if err != nil {
+		panic(err)
+	}
+
+	err = kujira.ExportKujiraVault(app, snapshot, &bl)
+	if err != nil {
+		panic(err)
+	}
+
+	err = lido.ExportBSTLunaHolders(app, snapshot, bl)
+	if err != nil {
+		panic(err)
+	}
+	err = lido.ExportLidoRewards(app, snapshot, bl)
 	if err != nil {
 		panic(err)
 	}

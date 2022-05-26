@@ -1,6 +1,7 @@
 package astroport
 
 import (
+	"context"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -52,7 +53,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		}
 
 		// skip non-target pools
-		if !isTargetPool(&pool) {
+		if !isTargetPool(&pool) || pool.TotalShare.IsZero() {
 			return false
 		}
 
@@ -83,6 +84,10 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		lpHoldersMap[lpAddr] = balanceMap
 	}
 
+	for lpAddr, lpHolders := range lpHoldersMap {
+		assertCw20Supply(ctx, qs, lpAddr, lpHolders)
+	}
+
 	app.Logger().Info("... LPs in Generator")
 	// get LP tokens in generator
 	generatorPrefix := util.GeneratePrefix("user_info")
@@ -108,38 +113,52 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 
 		return false
 	})
+	for lpAddr, lpHolders := range lpHoldersMap {
+		// Remove LP tokens owned by the staking generator
+		for _, addr := range StakingContracts {
+			if _, ok := lpHolders[addr]; ok {
+				delete(lpHolders, addr)
+			} else {
+				delete(lpHolders, AddressAstroportGenerator)
+			}
+		}
+		assertCw20Supply(ctx, qs, lpAddr, lpHolders)
+	}
+
+	app.Logger().Info("... Replace LP tokens owned by other vaults")
+	for vaultAddr, vaultHoldings := range contractLpHolders {
+		for lpAddr, userHoldings := range vaultHoldings {
+			lpHolding, ok := lpHoldersMap[lpAddr]
+			if ok {
+				vaultAmount := lpHolding[vaultAddr]
+				delete(lpHolding, vaultAddr)
+				app.Logger().Info(fmt.Sprintf("...... Resolved for contract: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
+				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
+				if err != nil {
+					panic(err)
+				}
+				for addr, amount := range userHoldings {
+					if lpHolding[addr].IsNil() {
+						lpHolding[addr] = sdk.ZeroInt()
+					} else {
+						lpHolding[addr] = lpHolding[addr].Add(amount)
+					}
+				}
+			}
+			// assertCw20Supply(ctx, qs, lpAddr, lpHolding)
+		}
+	}
 
 	var finalBalance = make(util.SnapshotBalanceAggregateMap)
 	// for each pair LP token, get their token holding, calculate their holdings per pair
+	app.Logger().Info("... Refund LPs")
 	for pairAddr, pairInfo := range pairs {
 		lpAddr := pairInfo.LiquidityToken
 		pool := pools[pairAddr]
 
 		holderMap := lpHoldersMap[lpAddr]
 
-		// Remove LP tokens owned by the staking generator
-		delete(holderMap, AddressAstroportGenerator)
-
-		// Replace LP tokens owned by other vaults
-		for vaultAddr, lpHoldings := range contractLpHolders {
-			lpHolding, ok := lpHoldings[lpAddr]
-			if ok {
-				vaultAmount := holderMap[vaultAddr]
-				delete(holderMap, vaultAddr)
-				app.Logger().Info(fmt.Sprintf("...... Resolved for contract: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
-				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
-				if err != nil {
-					panic(err)
-				}
-				for addr, amount := range lpHolding {
-					if holderMap[addr].IsNil() {
-						holderMap[addr] = sdk.ZeroInt()
-					} else {
-						holderMap[addr] = holderMap[addr].Add(amount)
-					}
-				}
-			}
-		}
+		assertCw20Supply(ctx, qs, lpAddr, holderMap)
 
 		// iterate over LP holders, calculate how much is to be refunded
 		for userAddr, lpBalance := range holderMap {
@@ -154,7 +173,6 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 						Balance: refunds[0],
 					})
 				}
-
 			}
 
 			if asset1name, ok := coalesceToBalanceDenom(pickDenomOrContractAddress(pool.Assets[1].AssetInfo)); ok {
@@ -173,5 +191,20 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		}
 	}
 
+	// assertCw20Supply(ctx, qs, lido.StLuna, finalBalance.FilterByDenom(util.DenomSTLUNA))
+
 	return finalBalance, nil
+}
+
+func assertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr string, holdings util.BalanceMap) {
+	var tokenInfo struct {
+		TotalSupply sdk.Int `json:"total_supply"`
+	}
+	util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: cw20Addr,
+		QueryMsg:        []byte("{\"token_info\":{}}"),
+	}, &tokenInfo)
+	if err := util.AlmostEqual(fmt.Sprintf("token %s supply doesnt match, ", cw20Addr), tokenInfo.TotalSupply, util.Sum(holdings), sdk.NewInt(2000000)); err != nil {
+		fmt.Println(err)
+	}
 }
