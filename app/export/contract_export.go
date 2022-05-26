@@ -40,7 +40,7 @@ func ExportContracts(app *terra.TerraApp) {
 	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
-	loopSnapshot:= checkWithSs(loop.ExportLoopLP(app, bl))
+	loopSnapshot := checkWithSs(loop.ExportLoopLP(app, bl))
 
 	// Export Vaults
 	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, &bl))
@@ -48,13 +48,14 @@ func ExportContracts(app *terra.TerraApp) {
 	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
 	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
 	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
-	mirrorSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
+	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
+	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
 	inkSs := checkWithSs(ink.ExportContract(app, &bl))
 
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot, loopSnapshot, astroportSnapshot,
 		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
-		edgeSs, mirrorSs, inkSs,
+		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 	)
 
 	// Export Liquid Staking
@@ -94,6 +95,13 @@ func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sd
 		return nil, err
 	}
 	for k, v := range marsLps {
+		finalMap[k] = v
+	}
+	mirrorLps, err := mirror.ExportMirrorLpStakers(app)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range mirrorLps {
 		finalMap[k] = v
 	}
 	return finalMap, nil
