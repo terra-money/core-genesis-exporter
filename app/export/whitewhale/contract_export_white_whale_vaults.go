@@ -1,14 +1,17 @@
 package whitewhale
 
 import (
+	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
 )
 
 var (
-	whiteWhaleVUST  = "terra1w0p5zre38ecdy3ez8efd5h9fvgum5s206xknrg"
-	whiteWhaleVault = "terra1ec3r2esp9cqekqqvn0wd6nwrjslnwxm7fh8egy"
+	whiteWhaleVUST     = "terra1w0p5zre38ecdy3ez8efd5h9fvgum5s206xknrg"
+	whiteWhaleVault    = "terra1ec3r2esp9cqekqqvn0wd6nwrjslnwxm7fh8egy"
+	whitewhaleTreasury = "terra1cnt2dls25u40wqyjgq72stuyjrwn0u5r6m5sm5"
 )
 
 func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
@@ -50,6 +53,13 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.Snaps
 	bl.RegisterAddress(util.DenomAUST, whiteWhaleVault)
 	bl.RegisterAddress(util.DenomUST, whiteWhaleVault)
 
+	// Handle treasury since it is not a cw3
+	ci, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), util.ToAddress(whiteWhaleVault))
+	if err != nil {
+		return nil, err
+	}
+	snapshot[ci.Admin] = snapshot[whitewhaleTreasury]
+	delete(snapshot, whitewhaleTreasury)
 	return snapshot, nil
 }
 
@@ -72,6 +82,15 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	err = util.AlmostEqual("whitewhale aust", aUstBalance, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(10000))
 	if err != nil {
 		return err
+	}
+
+	ci, err := app.WasmKeeper.GetContractInfo(sdk.UnwrapSDKContext(ctx), util.ToAddress(whiteWhaleVault))
+	if err != nil {
+		return err
+	}
+
+	if len(snapshot[whitewhaleTreasury]) > 0 || len(snapshot[ci.Admin]) == 0 {
+		return fmt.Errorf("whitewhale treasury error")
 	}
 	return nil
 }
