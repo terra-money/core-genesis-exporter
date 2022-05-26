@@ -35,7 +35,7 @@ type PrismState struct {
 func ExportContract(
 	app *terra.TerraApp,
 	snapshot util.SnapshotBalanceAggregateMap,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
@@ -159,7 +159,7 @@ func resolveCw20LpHoldings(
 	token string,
 	lp string,
 	pair string,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (map[string]sdk.Int, error) {
 	lpHoldings := make(map[string]sdk.Int)
 	err := util.GetCW20AccountsAndBalances2(ctx, k, lp, lpHoldings)
@@ -187,7 +187,7 @@ func resolvePLunaHoldings(
 	ctx context.Context,
 	q wasmtypes.QueryServer,
 	k wasmkeeper.Keeper,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (map[string]sdk.Int, error) {
 	pLunaHoldings := make(map[string]sdk.Int)
 	err := util.GetCW20AccountsAndBalances2(ctx, k, PrismPLuna, pLunaHoldings)

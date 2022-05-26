@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -58,6 +57,14 @@ var (
 		"terra1d9cufxz9a4px9zfzq8quqewlj24durtu6lhwfw",
 		//APOLLO-UST
 		"terra1zngkjhqqearpfhym9x9hnutpklduz45e9uvp9u",
+		//GLOW-UST
+		"terra1u6f5vnux869rnextxypjdyrvnvcaux68nr6nne",
+		//LOTA
+		"terra1msy2na2lvf64qffelg5t633f6wzlf03t5uvl8f",
+		//TNS
+		"terra1qanglh8qpeqltp60ktwmkl938lm9etz5s4hkh6",
+		//TWD
+		"terra1cdyw7fydevn372re7xjgfh8kqrrf2lxm5k6ve3",
 	}
 )
 
@@ -94,11 +101,11 @@ type RewardInfo struct {
 //        i. For each pool, add the LP tokens to the resulting map
 // 3. Return list of LP ownship group by LP token address and wallet address
 func ExportSpecVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	app.Logger().Info("Exporting Specturm")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	holdings := make(map[string]map[string]map[string]sdk.Int)
 	for _, farmAddrStr := range specFarms {
-		log.Printf("farm: %s\n", farmAddrStr)
 		farmAddr, err := sdk.AccAddressFromBech32(farmAddrStr)
 		if err != nil {
 			return nil, err
@@ -187,6 +194,5 @@ func getSpecFarmRewards(
 		}
 		return false
 	})
-	fmt.Printf("number of holders: %d\n", len(walletSeen))
 	return nil
 }

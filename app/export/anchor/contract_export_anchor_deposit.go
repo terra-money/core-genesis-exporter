@@ -7,7 +7,7 @@ import (
 	"github.com/terra-money/core/app/export/util"
 )
 
-func ExportAnchorDeposit(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportAnchorDeposit(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceMap, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 

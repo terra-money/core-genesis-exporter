@@ -8,7 +8,7 @@ import (
 )
 
 // ExportbLUNA get bLUNA balance for all accounts, multiply ER
-func ExportbLUNA(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportbLUNA(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceMap, error) {
 	bl.RegisterAddress(util.DenomLUNA, AddressBLUNAHub)
 
 	ctx := util.PrepCtx(app)

@@ -47,6 +47,7 @@ type UserInfo struct {
 //	}
 // }
 func ExportApolloVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	app.Logger().Info("Exporting Apollo Vaults")
 	ctx := util.PrepCtx(app)
 	strats, err := getListOfStrategies(ctx, app.WasmKeeper)
 	if err != nil {
@@ -81,7 +82,7 @@ func getLpHoldingsForStrat(ctx context.Context, keeper keeper.Keeper, strategyAd
 	if err != nil {
 		return map[string]sdk.Int{}, lpTokenAddr, err
 	}
-	log.Printf("len: %d", len(userLpHoldings))
+	// log.Printf("len: %d", len(userLpHoldings))
 	return userLpHoldings, lpTokenAddr, nil
 }
 

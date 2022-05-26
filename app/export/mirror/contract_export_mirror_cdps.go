@@ -25,6 +25,7 @@ var (
 )
 
 func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Mirror CDPs")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 

@@ -6,6 +6,7 @@ import (
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
+	"sort"
 )
 
 func ExportLoopLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
@@ -15,15 +16,12 @@ func ExportLoopLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceA
 		return nil, err
 	}
 
-	fmt.Println("factoryRun1", len(factoryRun1))
-
 	factoryRun2, err := exportLoopPerFactory(app, bl, AddressLoopFactory2)
 	if err != nil {
 		return nil, err
 	}
-	fmt.Println("factoryRun2", len(factoryRun2))
 
-	return nil, nil
+	return util.MergeSnapshots(factoryRun1, factoryRun2), nil
 }
 
 func exportLoopPerFactory(app *terra.TerraApp, bl util.Blacklist, factoryAddress string) (util.SnapshotBalanceAggregateMap, error) {
@@ -123,6 +121,7 @@ func exportLoopPerFactory(app *terra.TerraApp, bl util.Blacklist, factoryAddress
 		}
 
 		// it's always either flpAddr1 or flpAddr2, or nothing
+		sort.Strings(flpAddrs)
 		flpAddr := flpAddrs[1]
 		if flpAddr == "" {
 			continue
