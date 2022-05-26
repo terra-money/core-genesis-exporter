@@ -41,7 +41,15 @@ type BatchItem struct {
 	} `json:"info"`
 }
 
-func ExportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportApertureVaultsPreAttack(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	return exportApertureVaults(app, util.Snapshot(util.PreAttack), bl)
+}
+
+func ExportApertureVaultsPostAttack(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	return exportApertureVaults(app, util.Snapshot(util.PostAttack), bl)
+}
+
+func exportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Aperture (this takes a while)")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)

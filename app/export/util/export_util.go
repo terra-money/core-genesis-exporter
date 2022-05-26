@@ -319,3 +319,41 @@ func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr str
 		fmt.Println(err)
 	}
 }
+
+func CachedSBA(f func(*terra.TerraApp, *Blacklist) (SnapshotBalanceAggregateMap, error), file string, app *terra.TerraApp, bl *Blacklist) (SnapshotBalanceAggregateMap, error) {
+	if _, err := os.Stat(file); err == nil {
+		data, err := os.ReadFile(file)
+		if err == nil {
+			var snapshot SnapshotBalanceAggregateMap
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	return f(app, bl)
+}
+
+func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), file string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	if _, err := os.Stat(file); err == nil {
+		data, err := os.ReadFile(file)
+		if err == nil {
+			var snapshot map[string]map[string]map[string]sdk.Int
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	snapshot, err := f(app)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(file, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
+}

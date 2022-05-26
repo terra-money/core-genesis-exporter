@@ -52,7 +52,7 @@ func ExportContracts(app *terra.TerraApp) {
 	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, &bl))
 	check(kujira.Audit(app, kujiraSs))
 	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
-	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
+	apertureSs := checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "./aperture-pre.json", app, &bl))
 	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
 	check(edge.Audit(app, edgeSs))
 	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
@@ -99,28 +99,28 @@ func NewBlacklist() util.Blacklist {
 
 func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
 	finalMap := make(map[string]map[string]map[string]sdk.Int)
-	specLps, err := spectrum.ExportSpecVaultLPs(app)
+	specLps, err := util.CachedMap3(spectrum.ExportSpecVaultLPs, "./spectrum.json", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range specLps {
 		finalMap[k] = v
 	}
-	apolloLps, err := apollo.ExportApolloVaultLPs(app)
+	apolloLps, err := util.CachedMap3(apollo.ExportApolloVaultLPs, "./apollo.json", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range apolloLps {
 		finalMap[k] = v
 	}
-	marsLps, err := mars.ExportFieldOfMarsLpTokens(app)
+	marsLps, err := util.CachedMap3(mars.ExportFieldOfMarsLpTokens, "./mars-field.json", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range marsLps {
 		finalMap[k] = v
 	}
-	mirrorLps, err := mirror.ExportMirrorLpStakers(app)
+	mirrorLps, err := util.CachedMap3(mirror.ExportMirrorLpStakers, "./mirror.json", app)
 	if err != nil {
 		return nil, err
 	}
