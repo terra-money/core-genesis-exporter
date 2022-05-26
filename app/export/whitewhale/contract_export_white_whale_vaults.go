@@ -46,7 +46,7 @@ func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.Snaps
 
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	snapshot.Add(holdings[util.DenomUST], util.DenomUST)
-	snapshot.Add(holdings[util.DenomAUST], util.DenomUST)
+	snapshot.Add(holdings[util.DenomAUST], util.DenomAUST)
 	bl.RegisterAddress(util.DenomAUST, whiteWhaleVault)
 	bl.RegisterAddress(util.DenomUST, whiteWhaleVault)
 
@@ -69,7 +69,7 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	if err != nil {
 		return err
 	}
-	err = util.AlmostEqual("whitewhale aust", aUstBalance, snapshot.SumOfDenom(util.AUST), sdk.NewInt(10000))
+	err = util.AlmostEqual("whitewhale aust", aUstBalance, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(10000))
 	if err != nil {
 		return err
 	}
