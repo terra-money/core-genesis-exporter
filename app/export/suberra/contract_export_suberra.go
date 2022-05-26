@@ -17,7 +17,7 @@ var (
 )
 
 // ExportSuberra iterates over subwallets, then credit funds back to its owner
-func ExportSuberra(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportSuberra(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Suberra")
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)

@@ -29,7 +29,7 @@ type Voter struct {
 	Weight  int    `json:"weight"`
 }
 
-func SplitFundsToVoters(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, b *util.Blacklist) error {
+func SplitFundsToVoters(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, b util.Blacklist) error {
 	app.Logger().Info("Splitting funds from CW3 contracts")
 	q := util.PrepWasmQueryServer(app)
 	cw3s, err := getCw3Voters(app, q)

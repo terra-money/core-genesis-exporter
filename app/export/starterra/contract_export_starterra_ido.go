@@ -18,7 +18,7 @@ const (
 // Even though users deposit UST, the protocol changes some of it to aUST
 // When we calculate ownership, we will split all the funds in the IDO back to the users
 // Users should obtain a mix of UST and aUST to simply calculation
-func ExportIDO(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportIDO(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()

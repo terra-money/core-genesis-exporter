@@ -14,7 +14,7 @@ var (
 	whitewhaleTreasury = "terra1cnt2dls25u40wqyjgq72stuyjrwn0u5r6m5sm5"
 )
 
-func ExportWhiteWhaleVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportWhiteWhaleVaults(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Whitewhale vaults")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)

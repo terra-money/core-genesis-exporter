@@ -34,7 +34,7 @@ var (
 // 2. Find total supply of maTokens
 // 3. Find balance of assets in bank
 // 4. Assign accounts with assets proportionally
-func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting MARS")
 	lunaSs, err := ExportMarsDepositLuna(app, bl)
 	if err != nil {
@@ -82,7 +82,7 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	return nil
 }
 
-func ExportMarsDepositLuna(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportMarsDepositLuna(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
@@ -119,7 +119,7 @@ func ExportMarsDepositLuna(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsh
 	return snapshot, nil
 }
 
-func ExportMarsDepositUST(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportMarsDepositUST(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
@@ -166,7 +166,7 @@ func ExportMarsDepositUST(app *terra.TerraApp, bl *util.Blacklist) (util.Snapsho
 	return snapshot, nil
 }
 
-func ExportMarsSafetyFund(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportMarsSafetyFund(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info(".. Exporting safety fund")
 	ctx := util.PrepCtx(app)
 	balance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, marsSafetyFund)

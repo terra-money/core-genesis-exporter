@@ -15,7 +15,7 @@ const (
 )
 
 // ExportVaults Export LunaX balances in Stader vaults.
-func ExportVaults(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportVaults(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)

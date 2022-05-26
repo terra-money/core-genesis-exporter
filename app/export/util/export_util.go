@@ -332,7 +332,7 @@ func SaveDataToFile(file string, data interface{}) error {
 	return nil
 }
 
-func CachedSBA(f func(*terra.TerraApp, *Blacklist) (SnapshotBalanceAggregateMap, error), file string, app *terra.TerraApp, bl *Blacklist) (SnapshotBalanceAggregateMap, error) {
+func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, error), file string, app *terra.TerraApp, bl Blacklist) (SnapshotBalanceAggregateMap, error) {
 	if _, err := os.Stat(file); err == nil {
 		data, err := os.ReadFile(file)
 		if err == nil {

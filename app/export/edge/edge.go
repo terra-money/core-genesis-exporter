@@ -31,7 +31,7 @@ var (
 	}
 )
 
-func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Edge Protocol")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)

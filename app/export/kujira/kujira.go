@@ -15,7 +15,7 @@ const (
 	KujiraUstPair   = "terra1zkyrfyq7x9v5vqnnrznn3kvj35az4f6jxftrl2"
 )
 
-func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportKujiraVault(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Kujira vaults")
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("bid")
