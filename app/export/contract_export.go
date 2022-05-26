@@ -41,7 +41,7 @@ func ExportContracts(app *terra.TerraApp) {
 		panic(err)
 	}
 
-	// Export DEXs
+	// // Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
 	loopSnapshot := checkWithSs(loop.ExportLoopLP(app, bl))
@@ -54,6 +54,7 @@ func ExportContracts(app *terra.TerraApp) {
 	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
 	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
 	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
+	check(edge.Audit(app, edgeSs))
 	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
 	check(mirror.Audit(app, mirrorSs))
 	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
@@ -64,16 +65,18 @@ func ExportContracts(app *terra.TerraApp) {
 	staderVaultSs := checkWithSs(stader.ExportVaults(app, &bl))
 	angelSs := checkWithSs(angel.ExportEndowments(app, &bl))
 	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, &bl))
-	startTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
+	starTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
+	check(starterra.Audit(app, starTerraSs))
 	marsSs := checkWithSs(mars.ExportContract(app, &bl))
 	check(mars.Audit(app, marsSs))
 
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot, loopSnapshot, astroportSnapshot,
-		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
+		whiteWhaleSs, kujiraSs, prismSs,
+		apertureSs,
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
-		angelSs, randomEarthSs, startTerraSs,
+		angelSs, randomEarthSs, starTerraSs,
 		whiteWhaleSs, kujiraSs, prismSs,
 		edgeSs, mirrorSs, inkSs, marsSs,
 	)
