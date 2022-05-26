@@ -42,9 +42,6 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 	}
 	// fmt.Printf("got LunaX exchange rate %s\n", lunaXExchangeRate)
 
-	// keep total lunax amount for auditing later
-	totalLunaXAmount := sdk.ZeroInt()
-
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	for _, position := range positions {
@@ -53,7 +50,6 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 				if position.Collateral.Info.Token.Addr == addressLunaX {
 					// resolve lunaX
 					lunaAmount := lunaXExchangeRate.MulInt(position.Collateral.Amount).TruncateInt()
-					totalLunaXAmount = totalLunaXAmount.Add(position.Collateral.Amount)
 
 					snapshot.AppendOrAddBalance(position.Owner, util.SnapshotBalance{Denom: util.DenomLUNA, Balance: lunaAmount})
 				} else {
@@ -72,6 +68,33 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 	// also blacklist mirror lock to prevent double incenvitizing users shorting
 	bl.RegisterAddress(util.DenomUST, MirrorLock)
 
+	return snapshot, nil
+}
+
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+
+	// calculate total lunax amount
+	totalLunaXAmount := sdk.ZeroInt()
+
+	// get LunaX exchange rate
+	lunaXExchangeRate, err := getLunaXExchangeRate(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	positions, err := getAllPositions(ctx, q)
+	if err != nil {
+		return err
+	}
+
+	for _, position := range positions {
+		if position.Collateral.Info.Token.Addr == addressLunaX {
+			totalLunaXAmount = totalLunaXAmount.Add(position.Collateral.Amount)
+		}
+	}
+
 	// assert everything adds up
 	for _, denom := range MirrorRelevantCollaterals {
 		var contractBalance sdk.Int
@@ -81,7 +104,7 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 			contractBalance, err = util.GetNativeBalance(ctx, app.BankKeeper, denom, MirrorMint)
 		}
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		if denom == addressLunaX {
@@ -98,11 +121,11 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 		}
 
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return snapshot, nil
+	return nil
 }
 
 type positionsRes struct {
