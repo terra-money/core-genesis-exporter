@@ -58,6 +58,17 @@ func (s SnapshotBalanceAggregateMap) GetAddrBalance(addr string, denom string) s
 	return sum
 }
 
+func (bl Blacklist) GetAddressesByDenomMap(denom string) map[string]bool {
+	list := bl[denom]
+
+	m := make(map[string]bool)
+	for _, addr := range list {
+		m[addr] = true
+	}
+
+	return m
+}
+
 func (s SnapshotBalanceAggregateMap) SumOfDenom(denom string) sdk.Int {
 	sum := sdk.NewInt(0)
 	for _, balances := range s {
@@ -93,6 +104,20 @@ func (s SnapshotBalanceAggregateMap) FilterByDenom(denom string) map[string]sdk.
 		}
 	}
 	return filtered
+}
+
+func (s SnapshotBalanceAggregateMap) PickDenomIntoBalanceMap(denom string) BalanceMap {
+	v := make(BalanceMap)
+	for addr, holdings := range s {
+
+		for _, holding := range holdings {
+			if holding.Denom == denom {
+				v[addr] = holding.Balance
+			}
+		}
+	}
+
+	return v
 }
 
 func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {
