@@ -20,6 +20,7 @@ var (
 
 // returns staking_contract_addr -> lp_token -> user -> amount
 func ExportMirrorLpStakers(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	app.Logger().Info("Exporting Mirror LP Stakers")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
@@ -36,11 +37,24 @@ func ExportMirrorLpStakers(app *terra.TerraApp) (map[string]map[string]map[strin
 
 	// fmt.Println(lpHoldings)
 
+	// everything good, return
+	return map[string]map[string]map[string]sdk.Int{
+		MirrorStaking: lpHoldings,
+	}, nil
+}
+
+func AuditCompunders(app *terra.TerraApp, compunders map[string]map[string]map[string]sdk.Int) error {
+	app.Logger().Info("Audit -- Mirror Compounders")
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+
+	lpHoldings := compunders[MirrorStaking]
+
 	// assert total amounts
 	for lp, users := range lpHoldings {
 		contractBalance, err := util.GetCW20Balance(ctx, q, lp, MirrorStaking)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 		// add all users balance
@@ -51,14 +65,11 @@ func ExportMirrorLpStakers(app *terra.TerraApp) (map[string]map[string]map[strin
 
 		err = util.AlmostEqual(lp, contractBalance, usersTotalBalance, sdk.NewInt(1000000))
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	// everything good, return
-	return map[string]map[string]map[string]sdk.Int{
-		MirrorStaking: lpHoldings,
-	}, nil
+	return nil
 }
 
 func getLpHolders(ctx context.Context, keeper keeper.Keeper, stakingAddr sdk.AccAddress, assetLpMap map[string]string) (map[string]map[string]sdk.Int, error) {

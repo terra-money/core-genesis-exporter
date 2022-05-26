@@ -49,7 +49,8 @@ func ExportContracts(app *terra.TerraApp) {
 	// Export Vaults
 	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, &bl))
 	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, &bl))
-	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
+	prismSs := checkWithSs(prism.ExportContract(app, &bl))
+	prismLoSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
 	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
 	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
 	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
@@ -64,11 +65,15 @@ func ExportContracts(app *terra.TerraApp) {
 	startTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
 
 	// Independent snapshot audits and sanity checks
-	check(mirror.Audit(app, mirrorSs))
+	check(mirror.AuditCompunders(app, compoundedLps))
+	check(mirror.AuditCdps(app, mirrorSs))
+	check(mirror.AuditLOs(app, mirrorLoSs))
+	check(prism.Audit(app, prismSs))
+	check(prism.AuditLOs(app, prismLoSs))
 
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot, loopSnapshot, astroportSnapshot,
-		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
+		whiteWhaleSs, kujiraSs, prismSs, prismLoSs, apertureSs,
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
 		angelSs, randomEarthSs, startTerraSs,
@@ -78,7 +83,6 @@ func ExportContracts(app *terra.TerraApp) {
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
-	check(prism.ExportContract(app, snapshot, &bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
 }
 

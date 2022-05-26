@@ -34,16 +34,18 @@ type PrismState struct {
 
 func ExportContract(
 	app *terra.TerraApp,
-	snapshot util.SnapshotBalanceAggregateMap,
 	bl *util.Blacklist,
-) error {
+) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Prism pLuna, cLuna holders and unbonding Luna")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
+
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	// 1. Resolve pLUNA in PrismSwap and add to snapshot
 	pLunaHolding, err := resolvePLunaHoldings(ctx, q, app.WasmKeeper, bl)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for a, b := range pLunaHolding {
 		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
@@ -55,15 +57,18 @@ func ExportContract(
 	// 2. Resolve cLUNA in PrismSwap - cLuna / PRISM pair
 	cLunaHoldingInPair, err := resolveCw20LpHoldings(ctx, q, app.WasmKeeper, PrismCLuna, PrismSwapCLunaPrismLP, PrismSwapCLunaPrism, bl)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// 3. Get all direct holders of cLUNA
 	cLunaHolders := make(map[string]sdk.Int)
 	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, PrismCLuna, cLunaHolders)
 	if err != nil {
-		return err
+		return nil, err
 	}
+
+	// remove pair from cluna holders, remove here so that we can audit correctly
+	delete(cLunaHolders, PrismSwapCLunaPrism)
 
 	// 4. Merge all cLUNA holdings and dedupliate known contract holdings
 	cLunaHolders = util.MergeMaps(cLunaHolders, cLunaHoldingInPair)
@@ -79,20 +84,14 @@ func ExportContract(
 
 	prismState, err := getPrismVaultState(ctx, q)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	unbondedLunaHolding := make(map[string]sdk.Int)
 	err = checkUnbondingCLuna(ctx, q, prismState, cLunaHolders, unbondedLunaHolding)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	lunaInVault, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, PrismVault)
-	if err != nil {
-		return err
-	}
-	util.AlmostEqual("unbonded luna prism", lunaInVault, util.Sum(unbondedLunaHolding), sdk.NewInt(100000))
 
 	for a, b := range unbondedLunaHolding {
 		snapshot[a] = append(snapshot[a], util.SnapshotBalance{
@@ -100,17 +99,24 @@ func ExportContract(
 			Balance: b,
 		})
 	}
-	bl.RegisterAddress(util.DenomLUNA, PrismVault)
-	return nil
 
+	bl.RegisterAddress(util.DenomLUNA, PrismVault)
+	return snapshot, nil
 }
 
-func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) error {
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	app.Logger().Info("Audit -- Prism")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	snapshot.ApplyBlackList(bl)
-	swapPLunaToCLuna(snapshot)
-	snapshot.ApplyBlackList(bl)
+
+	// check unbonding luna
+	lunaInVault, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, PrismVault)
+	if err != nil {
+		return err
+	}
+	util.AlmostEqual("unbonded luna prism", lunaInVault, snapshot.SumOfDenom(util.DenomLUNA), sdk.NewInt(100000))
+
+	// check cluna supply
 	cLunaSupply, err := util.GetCW20TotalSupply(ctx, q, PrismCLuna)
 	if err != nil {
 		return err
@@ -119,6 +125,27 @@ func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMa
 	if err != nil {
 		return err
 	}
+
+	// check pluna supply
+	pLunaSupply, err := util.GetCW20TotalSupply(ctx, q, PrismPLuna)
+	if err != nil {
+		return err
+	}
+	err = util.AlmostEqual("pLuna doesn't match", pLunaSupply, snapshot.SumOfDenom(util.DenomPLUNA), sdk.NewInt(200000))
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) error {
+	app.Logger().Info("Resolving cLuna to Luna")
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	snapshot.ApplyBlackList(bl)
+	swapPLunaToCLuna(snapshot)
+	snapshot.ApplyBlackList(bl)
 
 	prismState, err := getPrismVaultState(ctx, q)
 	if err != nil {
@@ -203,14 +230,6 @@ func resolvePLunaHoldings(
 	pLunaHoldings = util.MergeMaps(pLunaHoldings, pLunaHoldingsInPair)
 	delete(pLunaHoldings, PrismSwapPLunaPrism)
 
-	pLunaSupply, err := util.GetCW20TotalSupply(ctx, q, PrismPLuna)
-	if err != nil {
-		return nil, err
-	}
-	err = util.AlmostEqual("pLuna", pLunaSupply, util.Sum(pLunaHoldings), sdk.NewInt(200000))
-	if err != nil {
-		return nil, err
-	}
 	return pLunaHoldings, nil
 }
 
@@ -255,7 +274,7 @@ func checkUnbondingCLuna(
 	cLunaHolders map[string]sdk.Int,
 	lunaHolders map[string]sdk.Int,
 ) error {
-	for acc, _ := range cLunaHolders {
+	for acc := range cLunaHolders {
 		var unbonding struct {
 			Requests [][]interface{} `json:"requests"`
 		}
