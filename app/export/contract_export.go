@@ -41,7 +41,7 @@ func ExportContracts(app *terra.TerraApp) {
 		panic(err)
 	}
 
-	check(mirror.AuditCompunders(app, compoundedLps))
+	check(mirror.AuditCompounders(app, compoundedLps))
 
 	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))

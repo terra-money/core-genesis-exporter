@@ -43,12 +43,12 @@ func ExportMirrorLpStakers(app *terra.TerraApp) (map[string]map[string]map[strin
 	}, nil
 }
 
-func AuditCompunders(app *terra.TerraApp, compunders map[string]map[string]map[string]sdk.Int) error {
+func AuditCompounders(app *terra.TerraApp, compounders map[string]map[string]map[string]sdk.Int) error {
 	app.Logger().Info("Audit -- Mirror Compounders")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
-	lpHoldings := compunders[MirrorStaking]
+	lpHoldings := compounders[MirrorStaking]
 
 	// assert total amounts
 	for lp, users := range lpHoldings {
