@@ -330,7 +330,19 @@ func CachedSBA(f func(*terra.TerraApp, *Blacklist) (SnapshotBalanceAggregateMap,
 			}
 		}
 	}
-	return f(app, bl)
+	snapshot, err := f(app, bl)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(file, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
 }
 
 func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), file string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
