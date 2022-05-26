@@ -128,18 +128,6 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	return nil
 }
 
-// checks that the final snapshot contains all users and at least the expected amounts by this exporter
-func FinalAudit(app *terra.TerraApp, exporterSnapshot util.SnapshotBalanceAggregateMap, finalSnapshot util.SnapshotBalanceAggregateMap) error {
-	for addr, balances := range exporterSnapshot {
-		for _, balance := range balances {
-			if exporterSnapshot.GetAddrBalance(addr, balance.Denom).LT(finalSnapshot.GetAddrBalance(addr, balance.Denom)) {
-				return fmt.Errorf("final balance check missmach: addr: %s, denom: %s", addr, balance.Denom)
-			}
-		}
-	}
-	return nil
-}
-
 type positionsRes struct {
 	Positions []position `json:"positions"`
 }

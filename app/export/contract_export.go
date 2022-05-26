@@ -67,9 +67,6 @@ func ExportContracts(app *terra.TerraApp) {
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ExportContract(app, snapshot, &bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
-
-	// Final audits and sanity checks (optional?)
-	check(mirror.FinalAudit(app, mirrorSs, snapshot))
 }
 
 func NewBlacklist() util.Blacklist {
