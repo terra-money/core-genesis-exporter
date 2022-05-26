@@ -79,7 +79,7 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalan
 	for asset, holding := range holdings {
 		for addr, b := range holding {
 			snapshot[addr] = append(snapshot[addr], util.SnapshotBalance{
-				Denom:   asset,
+				Denom:   util.MapContractToDenom(asset),
 				Balance: b,
 			})
 		}
