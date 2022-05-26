@@ -3,6 +3,7 @@ package edge
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -84,6 +85,32 @@ func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalan
 		}
 	}
 	return snapshot, nil
+}
+
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	for _, token := range EdgeProtocolTokens {
+		var balance sdk.Int
+		var err error
+		if strings.Contains(token, "terra") {
+			balance, err = util.GetCW20Balance(ctx, q, token, EdgeProtocolPool)
+			if err != nil {
+				return err
+			}
+		} else {
+			balance, err = util.GetNativeBalance(ctx, app.BankKeeper, token, EdgeProtocolPool)
+			if err != nil {
+				return err
+			}
+		}
+		denom := util.MapContractToDenom(token)
+		err = util.AlmostEqual(fmt.Sprintf("edge: %s", denom), snapshot.SumOfDenom(denom), balance, sdk.NewInt(100000))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func contains(a []string, i string) bool {

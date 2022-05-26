@@ -39,7 +39,11 @@ var contractToDenomMap map[string]string
 func init() {
 	contractToDenomMap = make(map[string]string)
 	contractToDenomMap["terra1tlgelulz9pdkhls6uglfn5lmxarx7f2gxtdzh2"] = DenomPLUNA
+	contractToDenomMap["terra17y9qkl8dfkeg4py7n0g5407emqnemc3yqk5rup"] = DenomLUNAX
 	contractToDenomMap["terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"] = DenomCLUNA
+	contractToDenomMap["terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"] = DenomCLUNA
+	contractToDenomMap["terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"] = DenomBLUNA
+	contractToDenomMap["terra1yg3j2s986nyp5z7r2lvt0hx3r0lnd7kwvwwtsc"] = DenomSTLUNA
 	contractToDenomMap["uluna"] = DenomLUNA
 	contractToDenomMap["uusd"] = DenomUST
 	contractToDenomMap[AUST] = DenomAUST
