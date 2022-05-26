@@ -15,10 +15,10 @@ const (
 )
 
 // ExportStarTerraIDO Export unspent funds from StarTerra IDO platform.
-func ExportStarTerraIDO(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportStarTerraIDO(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl *util.Blacklist) error {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
-	balances := make(util.SnapshotBalanceMap)
+	balances := make(util.BalanceMap)
 
 	var idoFunders struct {
 		Users []struct {
@@ -50,20 +50,18 @@ func ExportStarTerraIDO(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotB
 				continue
 			}
 
-			previousAmount := balances[userInfo.Funder].Balance
+			previousAmount := balances[userInfo.Funder]
 			if previousAmount.IsNil() {
 				previousAmount = sdk.NewInt(0)
 			}
 
-			balances[userInfo.Funder] = util.SnapshotBalance{
-				Denom:   util.DenomUST,
-				Balance: previousAmount.Add(userInfo.AvailableFunds),
-			}
+			balances[userInfo.Funder] = previousAmount.Add(userInfo.AvailableFunds)
 		}
 
 		offset = idoFunders.Users[len(idoFunders.Users)-1].Funder
 	}
 
 	bl.RegisterAddress(util.DenomUST, StarTerraIDO)
-	return balances, nil
+	snapshot.Add(balances, util.DenomUST)
+	return nil
 }
