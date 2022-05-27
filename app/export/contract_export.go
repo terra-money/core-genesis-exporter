@@ -220,6 +220,16 @@ func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, 
 	app.Logger().Info("Final audit")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
+
+	// assert no other staking derivatives exist in the snapshot
+	util.AssertZeroSupply(snapshot, util.DenomBLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomSTLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomSTEAK)
+	util.AssertZeroSupply(snapshot, util.DenomNLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomCLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomPLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomLUNAX)
+
 	if snapshotType == util.Snapshot(util.PreAttack) {
 		// expect to have aUST in the snapshot
 		aUstHoldings := snapshot.FilterByDenom(util.DenomAUST)
