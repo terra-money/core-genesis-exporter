@@ -15,7 +15,7 @@ var (
 
 // ExportAlice iterates over aaUST owners & extract balance
 // 1aaUST = 1aUST
-func ExportAlice(terra *app.TerraApp, b util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportAlice(terra *app.TerraApp, b util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	// register blacklist
 	b.RegisterAddress(util.DenomAUST, AliceaaUSTWrapper)
 
@@ -28,7 +28,12 @@ func ExportAlice(terra *app.TerraApp, b util.Blacklist) (util.SnapshotBalanceMap
 		return nil, err
 	}
 
-	return balances, nil
+	var finalBalances = make(util.SnapshotBalanceAggregateMap)
+	for user, balance := range balances {
+		finalBalances.AppendOrAddBalance(user, balance)
+	}
+
+	return finalBalances, nil
 }
 
 func forceIterateAndFindWalletAndBalance(ctx context.Context, keeper wasmKeeper.Keeper, aaUST string, balances map[string]util.SnapshotBalance) error {

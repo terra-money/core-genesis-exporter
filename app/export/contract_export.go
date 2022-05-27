@@ -3,7 +3,7 @@ package app
 import (
 	"fmt"
 
-	"github.com/terra-money/core/app/export/pylon"
+	"github.com/terra-money/core/app/export/alice"
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
@@ -11,12 +11,14 @@ import (
 	"github.com/terra-money/core/app/export/edge"
 	"github.com/terra-money/core/app/export/generic"
 	"github.com/terra-money/core/app/export/ink"
+	"github.com/terra-money/core/app/export/kinetic"
 	"github.com/terra-money/core/app/export/kujira"
 	"github.com/terra-money/core/app/export/lido"
 	"github.com/terra-money/core/app/export/loop"
 	"github.com/terra-money/core/app/export/native"
 	"github.com/terra-money/core/app/export/nebula"
 	"github.com/terra-money/core/app/export/prism"
+	"github.com/terra-money/core/app/export/pylon"
 	"github.com/terra-money/core/app/export/randomearth"
 	"github.com/terra-money/core/app/export/stader"
 	"github.com/terra-money/core/app/export/starflet"
@@ -48,6 +50,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// a global holder for all contracts and their contractInfo
 	// Export generics
 	genericsSnapshot, _, err := generic.ExportGenericContracts(app, bl)
+	if err != nil {
+		panic(err)
+	}
 
 	// Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "./anchor.json", app, bl))
@@ -103,21 +108,19 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	flokiSs := checkWithSs(terrafloki.ExportTerraFloki(app, bl))
 	flokiRefundsSs := checkWithSs(terrafloki.ExportFlokiRefunds(app, bl))
 	nebulaSs := checkWithSs(nebula.ExportNebulaCommunityFund(app, bl))
+	aliceSs := checkWithSs(alice.ExportAlice(app, bl))
+	kineticSs := checkWithSs(kinetic.ExportKinetic(app, bl))
 
 	snapshot := util.MergeSnapshots(
 		genericsSnapshot,
-		terraswapSnapshot,
-		loopSnapshot,
-		astroportSnapshot,
-		whiteWhaleSs, kujiraSs, prismSs,
-		apertureSs,
-		edgeSs, mirrorSs, mirrorLoSs, inkSs,
-		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
-		angelSs, randomEarthSs, starTerraSs,
-		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
-		edgeSs, mirrorSs, inkSs, marsSs, starfletSs, pylonSs,
-		flokiSs, flokiRefundsSs, nebulaSs,
-
+		// DEX
+		astroportSnapshot, terraswapSnapshot, loopSnapshot,
+		suberraSs, whiteWhaleSs, kujiraSs, prismSs,
+		prismLoSs, apertureSs, edgeSs, mirrorSs,
+		mirrorLoSs, inkSs, lunaXSs, staderPoolSs,
+		staderStakeSs, staderVaultSs, angelSs,
+		randomEarthSs, starfletSs, flokiSs,
+		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
 		// anchor
 		aUST,
 		bLunaInCustody,
