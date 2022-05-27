@@ -2,9 +2,7 @@ package app
 
 import (
 	"fmt"
-
-	"github.com/terra-money/core/app/export/generic"
-	"github.com/terra-money/core/app/export/kinetic"
+	"github.com/terra-money/core/app/export/anchor"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -37,20 +35,12 @@ func ExportContracts(app *terra.TerraApp) {
 	fmt.Println(app.LastBlockHeight())
 
 	bl := NewBlacklist()
-	// snapshot := make(util.SnapshotBalanceAggregateMap)
-
-	//ctx := util.PrepCtx(app)
-	//a := app.BankKeeper.GetAccountsBalances(sdk.UnwrapSDKContext(ctx))
-
-	fmt.Println(generic.ExportGenericContracts(app, bl))
-
-	return
-
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
 
-	kinetic.ExportKinetic(app, bl)
-	return
+	// Export anchor
+	aUST := checkWithSs(anchor.ExportAnchorDeposit(app, bl))
+	bLUNAHolders := checkWithSs(anchor.ExportbLUNA(app, bl))
 
 	// Export Compounders
 	compoundedLps, err := exportCompounders(app)
@@ -107,6 +97,10 @@ func ExportContracts(app *terra.TerraApp) {
 		angelSs, randomEarthSs, starTerraSs,
 		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
 		edgeSs, mirrorSs, inkSs, marsSs, starfletSs,
+
+		// anchor
+		aUST,
+		bLUNAHolders,
 	)
 
 	// Export Liquid Staking
