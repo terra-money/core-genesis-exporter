@@ -110,8 +110,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "./radomearth.json", app, bl))
 	starTerraSs := checkWithSs(starterra.ExportIDO(app, bl))
 	check(starterra.Audit(app, starTerraSs))
-	marsSs := checkWithSs(mars.ExportContract(app, bl))
-	check(mars.Audit(app, marsSs))
+	marsSs := make(util.SnapshotBalanceAggregateMap)
+	if snapshotType == util.Snapshot(util.PreAttack) {
+		marsSs = checkWithSs(mars.ExportContract(app, bl))
+		check(mars.Audit(app, marsSs))
+	}
 	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
 	pylonSs := checkWithSs(pylon.ExportContract(app, bl))
 	check(pylon.Audit(app, pylonSs))
@@ -137,7 +140,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		staderStakeSs, staderVaultSs, angelSs,
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
-		steakSs, astroportLockDropSs, nexusSs,
+		steakSs, astroportLockDropSs, nexusSs, marsSs,
 		// anchor
 		aUST,
 		bLunaInCustody,
