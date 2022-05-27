@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
@@ -13,6 +14,7 @@ import (
 // ER conversion is taken later in lido exporter
 func ExportbLUNA(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	bl.RegisterAddress(util.DenomLUNA, AddressBLUNAHub)
+	bl.RegisterAddress(util.DenomBLUNA, AddressBLUNACustody)
 
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()

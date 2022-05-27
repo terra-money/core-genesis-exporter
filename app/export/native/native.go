@@ -6,6 +6,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/util"
 )
 
@@ -21,6 +22,10 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	app.StakingKeeper.IterateUnbondingDelegations(uCtx, func(_ int64, ubd stakingtypes.UnbondingDelegation) (stop bool) {
+		if anchor.AddressBLUNAHub == ubd.DelegatorAddress {
+			return false
+		}
+
 		for _, entry := range ubd.Entries {
 			snapshot.AppendOrAddBalance(ubd.DelegatorAddress, util.SnapshotBalance{
 				Denom:   util.DenomLUNA,
@@ -33,6 +38,10 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 
 	c := 0
 	app.StakingKeeper.IterateAllDelegations(uCtx, func(del stakingtypes.Delegation) (stop bool) {
+		if anchor.AddressBLUNAHub == del.DelegatorAddress {
+			return false
+		}
+
 		c += 1
 		if c%10000 == 0 {
 			app.Logger().Info(fmt.Sprintf("Iterating delegations.. %d", c))

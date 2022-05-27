@@ -5,4 +5,5 @@ var (
 	AddressOverseer     = "terra1tmnqgvg567ypvsvk6rwsga3srp7e3lg6u0elp8"
 	AddressAUST         = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 	AddressBLUNAHub     = "terra1mtwph2juhj0rvjz7dy92gvl6xvukaxu8rfv8ts"
+	AddressBLUNACustody = "terra1ptjp2vfjrwh0j0faj9r6katm640kgjxnwwq9kn"
 )
