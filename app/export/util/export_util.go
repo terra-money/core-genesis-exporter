@@ -193,9 +193,9 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 		return err
 	}
 
-	unmarshalErr := tmjson.Unmarshal(response.QueryResult, res)
-	if unmarshalErr != nil {
-		return unmarshalErr
+	err = json.Unmarshal(response.QueryResult, res)
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -2,7 +2,6 @@ package mirror
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -86,16 +85,14 @@ func getAllOrders(ctx context.Context, q types.QueryServer) ([]order, error) {
 	var allOrders []order
 	getOrders = func(startAfter int) error {
 		var orders orderRes
-		resp, err := q.ContractStore(ctx, &types.QueryContractStoreRequest{
+		err := util.ContractQuery(ctx, q, &types.QueryContractStoreRequest{
 			ContractAddress: MirrorLimitOrder,
 			QueryMsg:        []byte(fmt.Sprintf("{\"orders\": {\"start_after\": %d, \"limit\": %d, \"order_by\": \"asc\"}}", startAfter, limit)),
-		})
+		}, &orders)
 
 		if err != nil {
 			return err
 		}
-
-		json.Unmarshal(resp.QueryResult, &orders)
 
 		allOrders = append(allOrders, orders.Orders...)
 		if len(orders.Orders) < limit {
