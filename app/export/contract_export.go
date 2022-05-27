@@ -147,6 +147,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	)
 
 	// Export Liquid Staking
+	check(nexus.ResolveToBLuna(app, snapshot, bl))
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
