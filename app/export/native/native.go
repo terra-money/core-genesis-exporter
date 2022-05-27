@@ -2,6 +2,7 @@ package native
 
 import (
 	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
@@ -18,14 +19,19 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 		valMap[v.OperatorAddress] = v
 	}
 
-	var unbondingDelegations []stakingtypes.UnbondingDelegation
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	app.StakingKeeper.IterateUnbondingDelegations(uCtx, func(_ int64, ubd stakingtypes.UnbondingDelegation) (stop bool) {
-		unbondingDelegations = append(unbondingDelegations, ubd)
+		for _, entry := range ubd.Entries {
+			snapshot.AppendOrAddBalance(ubd.DelegatorAddress, util.SnapshotBalance{
+				Denom:   util.DenomLUNA,
+				Balance: entry.Balance,
+			})
+		}
+
 		return false
 	})
 
 	c := 0
-	snapshot := make(util.SnapshotBalanceAggregateMap)
 	app.StakingKeeper.IterateAllDelegations(uCtx, func(del stakingtypes.Delegation) (stop bool) {
 		c += 1
 		if c%10000 == 0 {
@@ -41,15 +47,6 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 		})
 		return false
 	})
-
-	for _, ub := range unbondingDelegations {
-		for _, entry := range ub.Entries {
-			snapshot.AppendOrAddBalance(ub.DelegatorAddress, util.SnapshotBalance{
-				Denom:   util.DenomLUNA,
-				Balance: entry.Balance,
-			})
-		}
-	}
 	return snapshot, nil
 }
 
