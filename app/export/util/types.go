@@ -161,6 +161,8 @@ func (s SnapshotBalanceAggregateMap) ExportToBalances() []types.Balance {
 				Denom:  balance.Denom,
 			})
 		}
+
+		export = append(export, account)
 	}
 	return export
 }

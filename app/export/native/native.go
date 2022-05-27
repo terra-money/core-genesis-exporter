@@ -1,6 +1,7 @@
 package native
 
 import (
+	"fmt"
 	"github.com/cosmos/cosmos-sdk/types"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
@@ -28,7 +29,7 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 	app.StakingKeeper.IterateAllDelegations(uCtx, func(del stakingtypes.Delegation) (stop bool) {
 		c += 1
 		if c%10000 == 0 {
-			app.Logger().Info(".... %d", c)
+			app.Logger().Info(fmt.Sprintf("Iterating delegations.. %d", c))
 		}
 		v, ok := valMap[del.ValidatorAddress]
 		if !ok {
