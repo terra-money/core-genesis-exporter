@@ -4,33 +4,33 @@ import (
 	"fmt"
 
 	"github.com/terra-money/core/app/export/anchor"
-	"github.com/terra-money/core/app/export/generic"
-	"github.com/terra-money/core/app/export/native"
-
-	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/x/bank/types"
-	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
-	"github.com/terra-money/core/app/export/apollo"
 	"github.com/terra-money/core/app/export/astroport"
 	"github.com/terra-money/core/app/export/edge"
+	"github.com/terra-money/core/app/export/generic"
 	"github.com/terra-money/core/app/export/ink"
 	"github.com/terra-money/core/app/export/kujira"
 	"github.com/terra-money/core/app/export/lido"
 	"github.com/terra-money/core/app/export/loop"
-	"github.com/terra-money/core/app/export/mars"
-	"github.com/terra-money/core/app/export/mirror"
+	"github.com/terra-money/core/app/export/native"
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/randomearth"
-	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/stader"
 	"github.com/terra-money/core/app/export/starflet"
 	"github.com/terra-money/core/app/export/starterra"
 	"github.com/terra-money/core/app/export/suberra"
 	"github.com/terra-money/core/app/export/terraswap"
-	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/app/export/whitewhale"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank/types"
+	terra "github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/apollo"
+	"github.com/terra-money/core/app/export/mars"
+	"github.com/terra-money/core/app/export/mirror"
+	"github.com/terra-money/core/app/export/spectrum"
+	"github.com/terra-money/core/app/export/util"
 )
 
 func ExportContracts(app *terra.TerraApp) []types.Balance {
@@ -183,6 +183,7 @@ func check(err error) {
 }
 
 func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, snapshotType util.Snapshot) error {
+	app.Logger().Info("Final audit")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	if snapshotType == util.Snapshot(util.PreAttack) {
