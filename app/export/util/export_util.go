@@ -81,7 +81,7 @@ type Snapshot string
 
 const (
 	PreAttack  string = "preattack"
-	PostAttack string = "preattack"
+	PostAttack string = "postattack"
 )
 
 type lpHoldings map[string]types.Int // {wallet: amount}
