@@ -82,7 +82,7 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
 
 	// read from previous export
-	data, err := os.ReadFile("./terrawap-lp.json")
+	data, err := os.ReadFile("./terraswap-lp.json")
 	if err != nil {
 		return nil, err
 	}
