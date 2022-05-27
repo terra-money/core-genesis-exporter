@@ -48,6 +48,17 @@ func ExportLimitOrderContract(
 		}
 	}
 
+	// register all pairs as blacklist.
+	bl.RegisterAddress(util.DenomAUST, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomUST, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomBLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomSTLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomPLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomCLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomSTEAK, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomLUNAX, PrismLimitOrder)
+
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	// Audit
 	for _, denom := range PrismLimitOrderTokens {
