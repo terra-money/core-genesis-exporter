@@ -7,6 +7,7 @@ import (
 	"github.com/terra-money/core/app/export/kinetic"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
@@ -31,7 +32,7 @@ import (
 	"github.com/terra-money/core/app/export/whitewhale"
 )
 
-func ExportContracts(app *terra.TerraApp) {
+func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// var err error
 
 	fmt.Println(app.LastBlockHeight())

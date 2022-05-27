@@ -2,6 +2,7 @@ package util
 
 import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
 type BalanceMap map[string]sdk.Int
