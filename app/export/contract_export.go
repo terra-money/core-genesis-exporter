@@ -75,18 +75,18 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
-	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "loop.json", app, bl))
+	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "./loop.json", app, bl))
 
 	// Export Vaults
-	suberraSs := checkWithSs(util.CachedSBA(suberra.ExportSuberra, "suberra.json", app, bl))
+	suberraSs := checkWithSs(util.CachedSBA(suberra.ExportSuberra, "./suberra.json", app, bl))
 	check(suberra.Audit(app, suberraSs))
-	whiteWhaleSs := checkWithSs(util.CachedSBA(whitewhale.ExportWhiteWhaleVaults, "whitewhale.json", app, bl))
+	whiteWhaleSs := checkWithSs(util.CachedSBA(whitewhale.ExportWhiteWhaleVaults, "./whitewhale.json", app, bl))
 	check(whitewhale.Audit(app, whiteWhaleSs))
-	kujiraSs := checkWithSs(util.CachedSBA(kujira.ExportKujiraVault, "kujira.json", app, bl))
+	kujiraSs := checkWithSs(util.CachedSBA(kujira.ExportKujiraVault, "./kujira.json", app, bl))
 	check(kujira.Audit(app, kujiraSs))
-	prismSs := checkWithSs(util.CachedSBA(prism.ExportContract, "prism.json", app, bl))
+	prismSs := checkWithSs(util.CachedSBA(prism.ExportContract, "./prism.json", app, bl))
 	check(prism.Audit(app, prismSs))
-	prismLoSs := checkWithSs(util.CachedSBA(prism.ExportLimitOrderContract, "prism-limit-order.json", app, bl))
+	prismLoSs := checkWithSs(util.CachedSBA(prism.ExportLimitOrderContract, "./prism-limit-order.json", app, bl))
 	check(prism.AuditLOs(app, prismLoSs))
 	var apertureSs util.SnapshotBalanceAggregateMap
 	if snapshotType == util.Snapshot(util.PreAttack) {
@@ -95,7 +95,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPostAttack, "./aperture-post.json", app, bl))
 	}
 
-	edgeSs := checkWithSs(util.CachedSBA(edge.ExportContract, "edge.json", app, bl))
+	edgeSs := checkWithSs(util.CachedSBA(edge.ExportContract, "./edge.json", app, bl))
 	check(edge.Audit(app, edgeSs))
 	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "./mirror-cdp.json", app, bl))
 	check(mirror.AuditCdps(app, mirrorSs))
