@@ -34,7 +34,7 @@ type PrismState struct {
 
 func ExportContract(
 	app *terra.TerraApp,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Prism pLuna, cLuna holders and unbonding Luna")
 	ctx := util.PrepCtx(app)

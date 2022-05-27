@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+
 	"github.com/terra-money/core/app/export/generic"
 	"github.com/terra-money/core/app/export/kinetic"
 
@@ -71,7 +72,7 @@ func ExportContracts(app *terra.TerraApp) {
 	check(whitewhale.Audit(app, whiteWhaleSs))
 	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, bl))
 	check(kujira.Audit(app, kujiraSs))
-	prismSs := checkWithSs(prism.ExportContract(app, &bl))
+	prismSs := checkWithSs(prism.ExportContract(app, bl))
 	check(prism.Audit(app, prismSs))
 	prismLoSs := checkWithSs(prism.ExportLimitOrderContract(app, bl))
 	check(prism.AuditLOs(app, prismLoSs))
