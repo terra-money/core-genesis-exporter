@@ -108,7 +108,7 @@ func ResolveSteakLuna(app *app.TerraApp, snapshot util.SnapshotBalanceAggregateM
 
 	for _, balances := range snapshot {
 		for i, b := range balances {
-			if b.Denom == util.AddressSTEAK {
+			if b.Denom == util.DenomSTEAK {
 				balances[i] = util.SnapshotBalance{
 					Denom:   util.DenomLUNA,
 					Balance: hubState.ExchangeRate.MulInt(b.Balance).TruncateInt(),
