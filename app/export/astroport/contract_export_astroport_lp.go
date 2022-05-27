@@ -133,7 +133,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 			lpHolding, ok1 := lpHoldersMap[lpAddr]
 			vaultAmount, ok2 := lpHolding[vaultAddr]
 			if ok1 && ok2 && vaultAmount.IsPositive() {
-				app.Logger().Info(fmt.Sprintf("...... Resolving external vault: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
+				// app.Logger().Info(fmt.Sprintf("...... Resolving external vault: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
 				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
 				if err != nil {
 					panic(err)

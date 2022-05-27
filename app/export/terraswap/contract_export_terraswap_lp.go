@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -77,37 +78,50 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 
 	// for each LP token, get their token holdings
 	app.Logger().Info("... Getting LP holders")
+
 	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
-	lpCount := 0
-	var info tokenInfo
-	for _, pairInfo := range pairs {
-		lpCount += 1
-		if lpCount%100 == 0 {
-			app.Logger().Info(fmt.Sprintf("...... processed %d", lpCount))
-		}
-		lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
-		if err != nil {
-			panic(err)
-		}
-		balanceMap := make(util.BalanceMap)
 
-		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: lpAddr.String(),
-			QueryMsg:        []byte("{\"token_info\":{}}"),
-		}, &info); err != nil {
-			panic(fmt.Errorf("failed to query token info: %v", err))
-		}
+	// read from previous export
+	data, err := os.ReadFile("./terrawap-lp.json")
+	if err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(data, &lpHoldersMap); err != nil {
+		return nil, err
+	}
 
-		// skip LP with no supply
-		if info.TotalSupply.IsZero() {
-			continue
-		}
+	if len(lpHoldersMap) == 0 {
+		lpCount := 0
+		var info tokenInfo
+		for _, pairInfo := range pairs {
+			lpCount += 1
+			if lpCount%100 == 0 {
+				app.Logger().Info(fmt.Sprintf("...... processed %d", lpCount))
+			}
+			lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
+			if err != nil {
+				panic(err)
+			}
+			balanceMap := make(util.BalanceMap)
 
-		if err := util.GetCW20AccountsAndBalances(ctx, keeper, lpAddr.String(), balanceMap); err != nil {
-			panic(fmt.Errorf("failed to iterate over LP token owners: %v", err))
-		}
+			if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+				ContractAddress: lpAddr.String(),
+				QueryMsg:        []byte("{\"token_info\":{}}"),
+			}, &info); err != nil {
+				panic(fmt.Errorf("failed to query token info: %v", err))
+			}
 
-		lpHoldersMap[lpAddr.String()] = balanceMap
+			// skip LP with no supply
+			if info.TotalSupply.IsZero() {
+				continue
+			}
+
+			if err := util.GetCW20AccountsAndBalances(ctx, keeper, lpAddr.String(), balanceMap); err != nil {
+				panic(fmt.Errorf("failed to iterate over LP token owners: %v", err))
+			}
+
+			lpHoldersMap[lpAddr.String()] = balanceMap
+		}
 	}
 
 	app.Logger().Info("... Resolving staking ownership")

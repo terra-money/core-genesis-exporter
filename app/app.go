@@ -746,6 +746,11 @@ func (app *TerraApp) RegisterTendermintService(clientCtx client.Context) {
 	tmservice.RegisterTendermintService(app.BaseApp.GRPCQueryRouter(), clientCtx, app.interfaceRegistry)
 }
 
+// ModuleManager return ModuleManager
+func (app *TerraApp) ModuleManager() *module.Manager {
+	return app.mm
+}
+
 // RegisterSwaggerAPI registers swagger route with API Server
 func RegisterSwaggerAPI(rtr *mux.Router) {
 	statikFS, err := fs.New()

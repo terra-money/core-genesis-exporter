@@ -5,6 +5,7 @@ import (
 	"github.com/terra-money/core/app/export/anchor"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/x/bank/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
@@ -29,7 +30,7 @@ import (
 	"github.com/terra-money/core/app/export/whitewhale"
 )
 
-func ExportContracts(app *terra.TerraApp) {
+func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// var err error
 
 	fmt.Println(app.LastBlockHeight())
@@ -79,7 +80,7 @@ func ExportContracts(app *terra.TerraApp) {
 	staderStakeSs := checkWithSs(stader.ExportStakePlus(app, bl))
 	staderVaultSs := checkWithSs(stader.ExportVaults(app, bl))
 	angelSs := checkWithSs(angel.ExportEndowments(app, bl))
-	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, bl))
+	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "./radomearth.json", app, bl))
 	starTerraSs := checkWithSs(starterra.ExportIDO(app, bl))
 	check(starterra.Audit(app, starTerraSs))
 	marsSs := checkWithSs(mars.ExportContract(app, bl))
@@ -108,6 +109,8 @@ func ExportContracts(app *terra.TerraApp) {
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
+
+	return snapshot.ExportToBalances()
 }
 
 func NewBlacklist() util.Blacklist {
