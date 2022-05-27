@@ -17,12 +17,14 @@ import (
 	"github.com/terra-money/core/app/export/loop"
 	"github.com/terra-money/core/app/export/native"
 	"github.com/terra-money/core/app/export/nebula"
+	"github.com/terra-money/core/app/export/nexus"
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/pylon"
 	"github.com/terra-money/core/app/export/randomearth"
 	"github.com/terra-money/core/app/export/stader"
 	"github.com/terra-money/core/app/export/starflet"
 	"github.com/terra-money/core/app/export/starterra"
+	"github.com/terra-money/core/app/export/steak"
 	"github.com/terra-money/core/app/export/suberra"
 	"github.com/terra-money/core/app/export/terrafloki"
 	"github.com/terra-money/core/app/export/terraswap"
@@ -119,6 +121,10 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	nebulaSs := checkWithSs(nebula.ExportNebulaCommunityFund(app, bl))
 	aliceSs := checkWithSs(alice.ExportAlice(app, bl))
 	kineticSs := checkWithSs(kinetic.ExportKinetic(app, bl))
+	steakSs := checkWithSs(steak.ExportSteak(app, bl))
+	astroportLockDropSs := checkWithSs(astroport.ExportAstroportLockdrop(app, bl))
+	nexusSs, err := nexus.ExportNexus(app, astroportSnapshot, bl)
+	check(err)
 
 	snapshot := util.MergeSnapshots(
 		genericsSnapshot,
@@ -130,6 +136,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		staderStakeSs, staderVaultSs, angelSs,
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
+		steakSs, astroportLockDropSs, nexusSs,
 		// anchor
 		aUST,
 		bLunaInCustody,

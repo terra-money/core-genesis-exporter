@@ -15,7 +15,7 @@ var (
 	AddressSteakToken = "terra1rl4zyexjphwgx6v3ytyljkkc4mrje2pyznaclv"
 )
 
-func ExportSteak(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportSteak(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	// Blacklist steak hub from LUNA balance snapshot
 	bl.RegisterAddress(util.DenomLUNA, AddressSteakHub)
 
@@ -81,13 +81,14 @@ func ExportSteak(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceMap,
 	}
 
 	// 4. Iterate over balanceMap and apply exchange rate
-	var finalBalance = make(util.SnapshotBalanceMap)
+	var finalBalance = make(util.SnapshotBalanceAggregateMap)
 	for addr, bal := range balanceMap {
-		finalBalance[addr] = util.SnapshotBalance{
+		finalBalance.AppendOrAddBalance(addr, util.SnapshotBalance{
 			Denom:   util.DenomLUNA,
 			Balance: hubState.ExchangeRate.MulInt(bal).TruncateInt(),
-		}
+		})
 	}
+	bl.RegisterAddress(util.DenomLUNA, AddressSteakHub)
 
 	return finalBalance, nil
 }
