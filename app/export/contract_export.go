@@ -161,9 +161,12 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	if snapshotType == util.Snapshot(util.PostAttack) {
 		for _, sbs := range snapshot {
-			for _, b := range sbs {
+			for i, b := range sbs {
 				if b.Denom == util.DenomAUST {
-					b.Denom = util.DenomUST
+					sbs[i] = util.SnapshotBalance{
+						Denom: util.DenomUST,
+						Balance: b.Balance,
+					}
 				}
 			}
 		}
