@@ -3,6 +3,7 @@ package app
 import (
 	"fmt"
 	"github.com/terra-money/core/app/export/anchor"
+	"github.com/terra-money/core/app/export/generic"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -42,6 +43,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// Export anchor
 	aUST := checkWithSs(anchor.ExportAnchorDeposit(app, bl))
 	bLunaInCustody := checkWithSs(anchor.ExportbLUNA(app, bl))
+
+	// Export generics
+	generics := checkWithSs(generic.ExportGenericContracts(app, bl))
 
 	// Export Compounders
 	compoundedLps, err := exportCompounders(app)
@@ -88,6 +92,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
 
 	snapshot := util.MergeSnapshots(
+		generics,
 		terraswapSnapshot,
 		loopSnapshot,
 		astroportSnapshot,
