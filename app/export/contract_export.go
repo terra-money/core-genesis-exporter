@@ -43,8 +43,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
 
 	// Export anchor
-	aUST := checkWithSs(anchor.ExportAnchorDeposit(app, bl))
-	bLunaInCustody := checkWithSs(anchor.ExportbLUNA(app, bl))
+	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "./anchor.json", app, bl))
+	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "./anchor-bluna.json", app, bl))
 
 	// Export generics
 	generics := checkWithSs(generic.ExportGenericContracts(app, bl))
