@@ -422,3 +422,9 @@ func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.In
 	}
 	return snapshot, nil
 }
+
+func AssertZeroSupply(snapshot SnapshotBalanceAggregateMap, denom string) {
+	if !Sum(snapshot.FilterByDenom(denom)).IsZero() {
+		panic(fmt.Errorf("total supply invariant: denom %s exsists", denom))
+	}
+}
