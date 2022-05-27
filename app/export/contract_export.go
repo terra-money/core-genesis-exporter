@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/generic"
 	"github.com/terra-money/core/app/export/kinetic"
 
@@ -39,6 +40,9 @@ func ExportContracts(app *terra.TerraApp) {
 	// snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	//ctx := util.PrepCtx(app)
+
+	fmt.Println(anchor.ExportbLUNA(app, bl))
+	return
 	//a := app.BankKeeper.GetAccountsBalances(sdk.UnwrapSDKContext(ctx))
 
 	fmt.Println(generic.ExportGenericContracts(app, bl))

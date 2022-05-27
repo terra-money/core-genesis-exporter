@@ -43,7 +43,7 @@ func ExportContract(
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	// 1. Resolve pLUNA in PrismSwap and add to snapshot
-	pLunaHolding, err := resolvePLunaHoldings(ctx, q, app.WasmKeeper, bl)
+	pLunaHolding, err := resolvePLunaHoldings(ctx, q, app.WasmKeeper, *bl)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func ExportContract(
 	}
 
 	// 2. Resolve cLUNA in PrismSwap - cLuna / PRISM pair
-	cLunaHoldingInPair, err := resolveCw20LpHoldings(ctx, q, app.WasmKeeper, PrismCLuna, PrismSwapCLunaPrismLP, PrismSwapCLunaPrism, bl)
+	cLunaHoldingInPair, err := resolveCw20LpHoldings(ctx, q, app.WasmKeeper, PrismCLuna, PrismSwapCLunaPrismLP, PrismSwapCLunaPrism, *bl)
 	if err != nil {
 		return nil, err
 	}
