@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
@@ -14,6 +13,7 @@ import (
 	"github.com/terra-money/core/app/export/lido"
 	"github.com/terra-money/core/app/export/loop"
 	"github.com/terra-money/core/app/export/native"
+	"github.com/terra-money/core/app/export/nebula"
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/randomearth"
 	"github.com/terra-money/core/app/export/stader"
@@ -43,18 +43,13 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
 
-	// floki
-	flokiLP := checkWithSs(terrafloki.ExportTerraFloki(app, bl))
-	fmt.Println(flokiLP)
-
-	return nil
+	// a global holder for all contracts and their contractInfo
+	// Export generics
+	genericsSnapshot, _, err := generic.ExportGenericContracts(app, bl)
 
 	// Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "./anchor.json", app, bl))
 	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "./anchor-bluna.json", app, bl))
-
-	// Export generics
-	generics := checkWithSs(generic.ExportGenericContracts(app, bl))
 
 	// Export Compounders
 	compoundedLps, err := exportCompounders(app)
@@ -100,8 +95,13 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(mars.Audit(app, marsSs))
 	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
 
+	// Export miscellaneous
+	flokiSs := checkWithSs(terrafloki.ExportTerraFloki(app, bl))
+	flokiRefundsSs := checkWithSs(terrafloki.ExportFlokiRefunds(app, bl))
+	nebulaSs := checkWithSs(nebula.ExportNebulaCommunityFund(app, bl))
+
 	snapshot := util.MergeSnapshots(
-		generics,
+		genericsSnapshot,
 		terraswapSnapshot,
 		loopSnapshot,
 		astroportSnapshot,
@@ -112,6 +112,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		angelSs, randomEarthSs, starTerraSs,
 		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
 		edgeSs, mirrorSs, inkSs, marsSs, starfletSs,
+		flokiSs, flokiRefundsSs, nebulaSs,
 
 		// anchor
 		aUST,
