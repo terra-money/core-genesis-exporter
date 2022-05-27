@@ -40,10 +40,16 @@ import (
 
 func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// var err error
+	var snapshotType util.Snapshot
+	if app.LastBlockHeight() == 7544910 {
+		snapshotType = util.Snapshot(util.PreAttack)
+	} else {
+		snapshotType = util.Snapshot(util.PostAttack)
+	}
 
 	bl := NewBlacklist()
 	logger := app.Logger()
-	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
+	logger.Info(fmt.Sprintf("Exporting Contracts @ %d - %s", app.LastBlockHeight(), snapshotType))
 
 	// a global holder for all contracts and their contractInfo
 	// Export generics
@@ -80,7 +86,12 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(prism.Audit(app, prismSs))
 	prismLoSs := checkWithSs(prism.ExportLimitOrderContract(app, bl))
 	check(prism.AuditLOs(app, prismLoSs))
-	apertureSs := checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "./aperture-pre.json", app, bl))
+	var apertureSs util.SnapshotBalanceAggregateMap
+	if snapshotType == util.Snapshot(util.PreAttack) {
+		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "./aperture-pre.json", app, bl))
+	} else {
+		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPostAttack, "./aperture-post.json", app, bl))
+	}
 	edgeSs := checkWithSs(edge.ExportContract(app, bl))
 	check(edge.Audit(app, edgeSs))
 	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "./mirror-cdp.json", app, bl))
@@ -135,6 +146,16 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
 	snapshot.ApplyBlackList(bl)
+
+	if snapshotType == util.Snapshot(util.PostAttack) {
+		for _, sbs := range snapshot {
+			for _, b := range sbs {
+				if b.Denom == util.DenomAUST {
+					b.Denom = util.DenomUST
+				}
+			}
+		}
+	}
 
 	finalAudit(app, snapshot, util.Snapshot(util.PreAttack))
 
@@ -202,19 +223,31 @@ func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, 
 	if snapshotType == util.Snapshot(util.PreAttack) {
 		// expect to have aUST in the snapshot
 		aUstHoldings := snapshot.FilterByDenom(util.DenomAUST)
-		util.AssertCw20Supply(ctx, q, util.AUST, aUstHoldings)
+		err := util.AssertCw20Supply(ctx, q, util.AUST, aUstHoldings)
+		if err != nil {
+			app.Logger().Info(err.Error())
+		}
 
 		// expect to have LUNA in the snapshot
 		lunaHoldings := snapshot.FilterByDenom(util.DenomLUNA)
-		util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomLUNA, lunaHoldings)
+		err = util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomLUNA, lunaHoldings)
+		if err != nil {
+			app.Logger().Info(err.Error())
+		}
 	} else {
 		// expect to have UST in the snapshot
 		ustHoldings := snapshot.FilterByDenom(util.DenomUST)
-		util.AssertNativeSupply(ctx, app.BankKeeper, util.AUST, ustHoldings)
+		err := util.AssertNativeSupply(ctx, app.BankKeeper, util.AUST, ustHoldings)
+		if err != nil {
+			app.Logger().Info(err.Error())
+		}
 
 		// expect to have LUNA in the snapshot
 		lunaHoldings := snapshot.FilterByDenom(util.DenomLUNA)
-		util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomLUNA, lunaHoldings)
+		err = util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomLUNA, lunaHoldings)
+		if err != nil {
+			app.Logger().Info(err.Error())
+		}
 	}
 	return nil
 }
