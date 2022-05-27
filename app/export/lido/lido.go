@@ -248,7 +248,7 @@ func getUnbondingTokens(ctx context.Context, k wasmkeeper.Keeper) (map[string]sd
 			BLunaAmount  sdk.Int `json:"bluna_amount"`
 			StLunaAmount sdk.Int `json:"stluna_amount"`
 		}
-		wallet := string(key[3 : len(key)-4])
+		wallet := string(key[3:47])
 		err = json.Unmarshal(value, &unbondingRes)
 		if err != nil {
 			panic(err)
