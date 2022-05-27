@@ -41,7 +41,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	// Export anchor
 	aUST := checkWithSs(anchor.ExportAnchorDeposit(app, bl))
-	bLUNAHolders := checkWithSs(anchor.ExportbLUNA(app, bl))
+	bLunaInCustody := checkWithSs(anchor.ExportbLUNA(app, bl))
 
 	// Export Compounders
 	compoundedLps, err := exportCompounders(app)
@@ -101,7 +101,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 		// anchor
 		aUST,
-		bLUNAHolders,
+		bLunaInCustody,
 	)
 
 	// Export Liquid Staking
