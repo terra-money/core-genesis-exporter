@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/generic"
+	"github.com/terra-money/core/app/export/terrafloki"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -39,6 +40,12 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	bl := NewBlacklist()
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
+
+	// floki
+	flokiLP := checkWithSs(terrafloki.ExportTerraFloki(app, bl))
+	fmt.Println(flokiLP)
+
+	return nil
 
 	// Export anchor
 	aUST := checkWithSs(anchor.ExportAnchorDeposit(app, bl))

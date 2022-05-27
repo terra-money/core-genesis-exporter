@@ -9,7 +9,7 @@ import (
 	"github.com/terra-money/core/app/export/util"
 )
 
-func ExportGenericContracts(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportGenericContracts(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, common.ContractsMap, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
@@ -23,17 +23,17 @@ func ExportGenericContracts(app *terra.TerraApp, bl util.Blacklist) (util.Snapsh
 
 	// handle vesting
 	if vestingBalance, err := vesting.ExportVestingContracts(app, contractsMap, bl); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else {
 		finalBalance = util.MergeSnapshots(finalBalance, vestingBalance)
 	}
 
 	// handle cw3
 	if multisigBalance, err := cw3.ExportCW3(app, contractsMap, bl); err != nil {
-		return nil, err
+		return nil, nil, err
 	} else {
 		finalBalance = util.MergeSnapshots(finalBalance, multisigBalance)
 	}
 
-	return finalBalance, nil
+	return finalBalance, contractsMap, nil
 }
