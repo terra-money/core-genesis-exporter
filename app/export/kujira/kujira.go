@@ -68,9 +68,6 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	// Small rounding error (.00006%) here due to the way Kujira saves amount of aUST deposited
 	// When converting aUST to UST, the anchor exchange rate is used instead of
 	// listening to the hook of the new UST balance
-	err = util.AlmostEqual("kujira aUST", vaultBalance, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(50000000))
-	if err != nil {
-		return err
-	}
+	util.AlmostEqual("kujira aUST", vaultBalance, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(100000000))
 	return nil
 }
