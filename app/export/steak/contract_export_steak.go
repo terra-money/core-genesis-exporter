@@ -92,3 +92,29 @@ func ExportSteak(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggr
 
 	return finalBalance, nil
 }
+
+func ResolveSteakLuna(app *app.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	ctx := util.PrepCtx(app)
+	qs := util.PrepWasmQueryServer(app)
+	var hubState struct {
+		ExchangeRate sdk.Dec `json:"exchange_rate"`
+	}
+	if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: AddressSteakHub,
+		QueryMsg:        []byte("{\"state\":{}}"),
+	}, &hubState); err != nil {
+		return fmt.Errorf("failed to query SteakHub state: %v", err)
+	}
+
+	for _, balances := range snapshot {
+		for i, b := range balances {
+			if b.Denom == util.AddressSTEAK {
+				balances[i] = util.SnapshotBalance{
+					Denom:   util.DenomLUNA,
+					Balance: hubState.ExchangeRate.MulInt(b.Balance).TruncateInt(),
+				}
+			}
+		}
+	}
+	return nil
+}
