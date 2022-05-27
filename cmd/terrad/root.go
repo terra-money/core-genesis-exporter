@@ -273,7 +273,13 @@ func (a appCreator) appExport(
 
 	// run contracts first
 	bank := export.ExportContracts(terraApp)
-	bankState, err := json.Marshal(bank)
+	bankDefaultGenesis := banktypes.DefaultGenesisState()
+	bankDefaultGenesis.Balances = bank
+
+	bankState, err := json.Marshal(bankDefaultGenesis)
+	if err != nil {
+		return servertypes.ExportedApp{}, err
+	}
 
 	genState := make(map[string]json.RawMessage)
 	genState["bank"] = bankState
