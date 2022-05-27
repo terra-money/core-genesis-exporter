@@ -13,7 +13,7 @@ const (
 )
 
 // ExportArbitrageAUST Export locked funds in Arbitrage Contract.
-func ExportArbitrageAUST(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportArbitrageAUST(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
