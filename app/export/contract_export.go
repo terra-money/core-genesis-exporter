@@ -43,7 +43,9 @@ func ExportContracts(app *terra.TerraApp) {
 		panic(err)
 	}
 
-	// // Export DEXs
+	check(mirror.AuditCompounders(app, compoundedLps))
+
+	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
 	loopSnapshot := checkWithSs(loop.ExportLoopLP(app, bl))
@@ -55,13 +57,17 @@ func ExportContracts(app *terra.TerraApp) {
 	check(whitewhale.Audit(app, whiteWhaleSs))
 	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, bl))
 	check(kujira.Audit(app, kujiraSs))
-	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, bl))
+	prismSs := checkWithSs(prism.ExportContract(app, &bl))
+	check(prism.Audit(app, prismSs))
+	prismLoSs := checkWithSs(prism.ExportLimitOrderContract(app, bl))
+	check(prism.AuditLOs(app, prismLoSs))
 	apertureSs := checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "./aperture-pre.json", app, bl))
 	edgeSs := checkWithSs(edge.ExportContract(app, bl))
 	check(edge.Audit(app, edgeSs))
 	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "./mirror-cdp.json", app, bl))
-	check(mirror.Audit(app, mirrorSs))
+	check(mirror.AuditCdps(app, mirrorSs))
 	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, bl))
+	check(mirror.AuditLOs(app, mirrorLoSs))
 	inkSs := checkWithSs(ink.ExportContract(app, bl))
 	lunaXSs := checkWithSs(stader.ExportLunaX(app, bl))
 	staderPoolSs := checkWithSs(stader.ExportPools(app, bl))
@@ -73,7 +79,7 @@ func ExportContracts(app *terra.TerraApp) {
 	check(starterra.Audit(app, starTerraSs))
 	marsSs := checkWithSs(mars.ExportContract(app, bl))
 	check(mars.Audit(app, marsSs))
-  starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
+	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
 
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot,
@@ -84,7 +90,7 @@ func ExportContracts(app *terra.TerraApp) {
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
 		angelSs, randomEarthSs, starTerraSs,
-		whiteWhaleSs, kujiraSs, prismSs,
+		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
 		edgeSs, mirrorSs, inkSs, marsSs, starfletSs,
 	)
 
@@ -92,7 +98,6 @@ func ExportContracts(app *terra.TerraApp) {
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
-	check(prism.ExportContract(app, snapshot, bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
 }
 
