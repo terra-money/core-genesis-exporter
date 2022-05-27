@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+
+	"github.com/terra-money/core/app/export/pylon"
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
@@ -94,6 +96,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	marsSs := checkWithSs(mars.ExportContract(app, bl))
 	check(mars.Audit(app, marsSs))
 	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
+	pylonSs := checkWithSs(pylon.ExportContract(app, bl))
+	check(pylon.Audit(app, pylonSs))
 
 	// Export miscellaneous
 	flokiSs := checkWithSs(terrafloki.ExportTerraFloki(app, bl))
@@ -111,7 +115,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
 		angelSs, randomEarthSs, starTerraSs,
 		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
-		edgeSs, mirrorSs, inkSs, marsSs, starfletSs,
+		edgeSs, mirrorSs, inkSs, marsSs, starfletSs, pylonSs,
 		flokiSs, flokiRefundsSs, nebulaSs,
 
 		// anchor

@@ -53,26 +53,19 @@ type PylonPoolConfig struct {
 	PoolToken  string `json:"dp_token"`
 }
 
-func ExportContract(app *terra.TerraApp, bl util.Blacklist) (map[string]map[string]sdk.Int, error) {
+func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Pylon")
 	var _ wasmtypes.QueryServer
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
-	holdings := make(map[string]map[string]sdk.Int)
-	holdings[util.AUST] = make(map[string]sdk.Int)
-	holdings[util.DenomUST] = make(map[string]sdk.Int)
-
-	// Used for final audit
-	sumAUst := sdk.NewInt(0)
-	sumUst := sdk.NewInt(0)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	for _, pool := range PylonPools {
 		config, err := getConfig(ctx, q, app.BankKeeper, pool)
 		if err != nil {
 			return nil, err
 		}
-		sumAUst = sumAUst.Add(config.AUstAmount)
-		sumUst = sumUst.Add(config.UstAmount)
 		totalSupply, err := util.GetCW20TotalSupply(ctx, q, config.PoolToken)
 		if err != nil {
 			return nil, err
@@ -84,25 +77,46 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (map[string]map[stri
 		}
 
 		for w, a := range tokenBalances {
-			if holdings[util.AUST][w].IsNil() {
-				holdings[util.AUST][w] = a.Mul(config.AUstAmount).Quo(totalSupply)
-			} else {
-				holdings[util.AUST][w] = holdings[util.AUST][w].Add(a.Mul(config.AUstAmount).Quo(totalSupply))
+			userUstAmount := a.Mul(config.UstAmount).Quo(totalSupply)
+			userAustAmount := a.Mul(config.AUstAmount).Quo(totalSupply)
+
+			if !userUstAmount.IsZero() {
+				snapshot.AppendOrAddBalance(w, util.SnapshotBalance{Denom: util.DenomUST, Balance: userUstAmount})
 			}
-			if holdings[util.DenomUST][w].IsNil() {
-				holdings[util.DenomUST][w] = a.Mul(config.UstAmount).Quo(totalSupply)
-			} else {
-				holdings[util.DenomUST][w] = holdings[util.DenomUST][w].Add(a.Mul(config.UstAmount).Quo(totalSupply))
+			if !userAustAmount.IsZero() {
+				snapshot.AppendOrAddBalance(w, util.SnapshotBalance{Denom: util.DenomAUST, Balance: userAustAmount})
 			}
 		}
 	}
 
-	// actualSumAUst := util.Sum(holdings[util.AUST])
-	// actualSumUst := util.Sum(holdings[util.DenomUST])
-	// fmt.Printf("aUST expected: %s, actual: %s, difference: %s\n", sumAUst, actualSumAUst, sumAUst.Sub(actualSumAUst))
-	// fmt.Printf("UST expected:  %s, actual: %s, difference: %s\n", sumUst, actualSumUst, sumUst.Sub(actualSumUst))
+	return snapshot, nil
+}
 
-	return holdings, nil
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	app.Logger().Info("Audit -- Pylon")
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+
+	sumAUst := sdk.NewInt(0)
+	sumUst := sdk.NewInt(0)
+
+	for _, pool := range PylonPools {
+		config, err := getConfig(ctx, q, app.BankKeeper, pool)
+		if err != nil {
+			return err
+		}
+		sumAUst = sumAUst.Add(config.AUstAmount)
+		sumUst = sumUst.Add(config.UstAmount)
+	}
+
+	if err := util.AlmostEqual(util.AUST, sumAUst, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(1000000)); err != nil {
+		return err
+	}
+	if err := util.AlmostEqual(util.DenomUST, sumUst, snapshot.SumOfDenom(util.DenomUST), sdk.NewInt(1000000)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func getConfig(ctx context.Context, q wasmtypes.QueryServer, k wasmtypes.BankKeeper, pool string) (PylonPoolConfig, error) {
