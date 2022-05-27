@@ -49,6 +49,7 @@ func ExportBSTLunaHolders(
 		return err
 	}
 	snapshot.Add(bondedBLunaHolders, util.DenomBLUNA)
+	snapshot.ApplyBlackList(bl)
 
 	return nil
 }
@@ -68,13 +69,13 @@ func ResolveLidoLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregate
 			if sb.Denom == util.DenomBLUNA {
 				sbs[i] = util.SnapshotBalance{
 					Denom:   util.DenomLUNA,
-					Balance: lidoState.StLunaExchangeRate.MulInt(sb.Balance).TruncateInt(),
+					Balance: lidoState.BLunaExchangeRate.MulInt(sb.Balance).TruncateInt(),
 				}
 			}
 			if sb.Denom == util.DenomSTLUNA {
 				sbs[i] = util.SnapshotBalance{
 					Denom:   util.DenomLUNA,
-					Balance: lidoState.BLunaExchangeRate.MulInt(sb.Balance).TruncateInt(),
+					Balance: lidoState.StLunaExchangeRate.MulInt(sb.Balance).TruncateInt(),
 				}
 			}
 		}
