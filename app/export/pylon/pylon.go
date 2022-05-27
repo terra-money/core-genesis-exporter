@@ -54,6 +54,7 @@ type PylonPoolConfig struct {
 }
 
 func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Pylon")
 	var _ wasmtypes.QueryServer
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)

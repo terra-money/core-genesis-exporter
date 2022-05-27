@@ -5,6 +5,7 @@ import (
 
 	"github.com/terra-money/core/app/export/generic"
 	"github.com/terra-money/core/app/export/kinetic"
+	"github.com/terra-money/core/app/export/pylon"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -95,6 +96,8 @@ func ExportContracts(app *terra.TerraApp) {
 	marsSs := checkWithSs(mars.ExportContract(app, bl))
 	check(mars.Audit(app, marsSs))
 	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
+	pylonSs := checkWithSs(pylon.ExportContract(app, bl))
+	check(pylon.Audit(app, pylonSs))
 
 	snapshot := util.MergeSnapshots(
 		terraswapSnapshot,
@@ -106,7 +109,7 @@ func ExportContracts(app *terra.TerraApp) {
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
 		angelSs, randomEarthSs, starTerraSs,
 		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
-		edgeSs, mirrorSs, inkSs, marsSs, starfletSs,
+		edgeSs, mirrorSs, inkSs, marsSs, starfletSs, pylonSs,
 	)
 
 	// Export Liquid Staking
