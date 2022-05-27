@@ -38,7 +38,7 @@ var StaderFundsContracts = []string{
 }
 
 // ExportStakePlus Export staked Luna balances for users.
-func ExportStakePlus(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportStakePlus(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)

@@ -21,7 +21,7 @@ var (
 
 func ExportLimitOrderContract(
 	app *terra.TerraApp,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Mirror Limit Orders")
 	ctx := util.PrepCtx(app)

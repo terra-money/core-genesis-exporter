@@ -14,7 +14,7 @@ var (
 	AddressSteakToken = "terra1rl4zyexjphwgx6v3ytyljkkc4mrje2pyznaclv"
 )
 
-func ExportSteak(app *app.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceMap, error) {
+func ExportSteak(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceMap, error) {
 	// Blacklist steak hub from LUNA balance snapshot
 	bl.RegisterAddress(util.DenomLUNA, AddressSteakHub)
 

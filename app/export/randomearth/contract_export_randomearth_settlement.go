@@ -14,7 +14,7 @@ const (
 )
 
 // ExportSettlements Index Luna held in RandomEarth settlement contract.
-func ExportSettlements(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportSettlements(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 

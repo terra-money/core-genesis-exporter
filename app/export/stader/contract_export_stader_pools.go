@@ -17,7 +17,7 @@ const (
 )
 
 // ExportPools Export Luna holdings from the 3 staking pools.
-func ExportPools(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportPools(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 

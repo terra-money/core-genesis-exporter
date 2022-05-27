@@ -1,7 +1,8 @@
-package app
+package suberra
 
 import (
 	"context"
+	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -16,7 +17,8 @@ var (
 )
 
 // ExportSuberra iterates over subwallets, then credit funds back to its owner
-func ExportSuberra(app *terra.TerraApp) (map[string]util.SnapshotBalance, error) {
+func ExportSuberra(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Suberra")
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
 
@@ -30,9 +32,13 @@ func ExportSuberra(app *terra.TerraApp) (map[string]util.SnapshotBalance, error)
 	}
 
 	// 3. map subwallets to admins
-	ownerBalances := make(map[string]util.SnapshotBalance)
+	ownerBalances := make(util.SnapshotBalanceAggregateMap)
 	if err := mapSubwalletToAdmin(ctx, qs, subwalletBalances, ownerBalances); err != nil {
 		return nil, err
+	}
+
+	for _, addr := range subwallets {
+		bl.RegisterAddress(util.DenomAUST, addr)
 	}
 
 	return ownerBalances, nil
@@ -69,7 +75,7 @@ func iterateSubwalletsAndGetAUstBalance(ctx context.Context, q wasmtypes.QuerySe
 	return nil
 }
 
-func mapSubwalletToAdmin(ctx context.Context, q wasmtypes.QueryServer, subwalletBalances map[string]sdk.Int, ownerBalances map[string]util.SnapshotBalance) error {
+func mapSubwalletToAdmin(ctx context.Context, q wasmtypes.QueryServer, subwalletBalances map[string]sdk.Int, ownerBalances util.SnapshotBalanceAggregateMap) error {
 	var owner string
 	for addr, bal := range subwalletBalances {
 		if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
@@ -78,12 +84,40 @@ func mapSubwalletToAdmin(ctx context.Context, q wasmtypes.QueryServer, subwallet
 		}, &owner); err != nil {
 			return err
 		}
-
-		ownerBalances[owner] = util.SnapshotBalance{
-			Denom:   util.DenomAUST,
-			Balance: bal,
+		if bal.IsPositive() {
+			ownerBalances.AppendOrAddBalance(owner,
+				util.SnapshotBalance{
+					Denom:   util.DenomAUST,
+					Balance: bal,
+				},
+			)
 		}
 	}
 
+	return nil
+}
+
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	if len(snapshot) < 2 {
+		return fmt.Errorf("should have more than one sub account")
+	}
+
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	for owner, balance := range snapshot.FilterByDenom(util.DenomAUST) {
+		var subAccount string
+		err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: suberraSubwalletFactory,
+			QueryMsg:        []byte(fmt.Sprintf("{ \"get_subwallet_address\": { \"owner_address\": \"%s\"}}", owner)),
+		}, &subAccount)
+		if err != nil {
+			return err
+		}
+		bal, err := util.GetCW20Balance(ctx, q, util.AUST, subAccount)
+		if err != nil {
+			return err
+		}
+		util.AlmostEqual(fmt.Sprintf("suberra: %s", owner), bal, balance, sdk.NewInt(1000))
+	}
 	return nil
 }

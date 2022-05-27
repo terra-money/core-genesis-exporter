@@ -8,6 +8,8 @@ import (
 var (
 	AddressAstroportLockdrop = "terra1627ldjvxatt54ydd3ns6xaxtd68a2vtyu7kakj"
 	AddressAstroportFactory  = "terra1fnywlw4edny3vw44x04xd67uzkdqluymgreu7g"
+	PylonStaking             = "terra19nek85kaqrvzlxygw20jhy08h3ryjf5kg4ep3l"
+	PylonLp                  = "terra16unvjel8vvtanxjpw49ehvga5qjlstn8c826qe"
 
 	AddressAUST   = anchor.AddressAUST
 	AddressBLUNA  = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"

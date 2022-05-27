@@ -71,6 +71,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 	})
 
 	// for each LP token, get their token holdings
+	app.Logger().Info("... Getting LP token holdings")
 	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
 	for _, pairInfo := range pairs {
 		lpAddr := pairInfo.LiquidityToken
@@ -113,11 +114,13 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 		return false
 	})
 	for lpAddr, lpHolders := range lpHoldersMap {
-		// Remove LP tokens owned by the staking generator
 		for _, addr := range StakingContracts {
 			if _, ok := lpHolders[addr]; ok {
+				// Remove LP tokens owned by a subset of staking contracts
+				// and not owned by the generator
 				delete(lpHolders, addr)
 			} else {
+				// Remove LP tokens owned by the staking generator
 				delete(lpHolders, AddressAstroportGenerator)
 			}
 		}
@@ -130,7 +133,6 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 			lpHolding, ok1 := lpHoldersMap[lpAddr]
 			vaultAmount, ok2 := lpHolding[vaultAddr]
 			if ok1 && ok2 && vaultAmount.IsPositive() {
-				delete(lpHolding, vaultAddr)
 				app.Logger().Info(fmt.Sprintf("...... Resolving external vault: %s, Added %d users", vaultAddr, len(contractLpHolders[vaultAddr][lpAddr])))
 				err := util.AlmostEqual("replace astro lp", vaultAmount, util.Sum(contractLpHolders[vaultAddr][lpAddr]), sdk.NewInt(10000))
 				if err != nil {
@@ -143,6 +145,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 						lpHolding[addr] = lpHolding[addr].Add(amount)
 					}
 				}
+				delete(lpHolding, vaultAddr)
 				util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
 			}
 		}

@@ -31,8 +31,10 @@ func (bl Blacklist) GetAddressesByDenom(denom string) []string {
 func MergeSnapshots(ss ...SnapshotBalanceAggregateMap) (s3 SnapshotBalanceAggregateMap) {
 	s3 = make(SnapshotBalanceAggregateMap)
 	for _, s := range ss {
-		for w, sbs := range s {
-			s3[w] = append(s3[w], sbs...)
+		for addr, sbs := range s {
+			for _, sbs := range sbs {
+				s3.AppendOrAddBalance(addr, sbs)
+			}
 		}
 	}
 	return s3

@@ -75,10 +75,10 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	})
 	app.Logger().Info(fmt.Sprintf("...... pool count: %d", len(pools)))
 
-	app.Logger().Info("... Getting LP holders")
-	lpCount := 0
 	// for each LP token, get their token holdings
+	app.Logger().Info("... Getting LP holders")
 	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
+	lpCount := 0
 	var info tokenInfo
 	for _, pairInfo := range pairs {
 		lpCount += 1
@@ -110,7 +110,6 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 		lpHoldersMap[lpAddr.String()] = balanceMap
 	}
 
-	// getAllStakingContracts(ctx, keeper, lpHoldersMap)
 	app.Logger().Info("... Resolving staking ownership")
 	stakingHoldings, err := getStakingHoldings(ctx, keeper)
 	if err != nil {
@@ -119,9 +118,9 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	for lp, staking := range stakingHoldings {
 		if lpHolding, ok := lpHoldersMap[lp]; ok {
 			if amount, okk := lpHolding[staking.StakingAddr]; okk {
-				app.Logger().Info(fmt.Sprintf("...... Resolving stakers: %s, Added %d users, amount %s",
-					staking.StakingAddr, len(staking.Holdings), util.Sum(staking.Holdings),
-				))
+				// app.Logger().Info(fmt.Sprintf("...... Resolving stakers: %s, Added %d users, amount %s",
+				// staking.StakingAddr, len(staking.Holdings), util.Sum(staking.Holdings),
+				// ))
 				err := util.AlmostEqual(
 					fmt.Sprintf("terraswap staking %s lp %s\n", staking.StakingAddr, lp),
 					amount,
@@ -129,7 +128,6 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 					sdk.NewInt(1000000),
 				)
 				if err != nil {
-					// fmt.Println(err)
 					staking.Holdings = normalizeStakingHoldings(staking.Holdings, amount)
 				}
 				delete(lpHolding, staking.StakingAddr)
@@ -147,7 +145,7 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 				if vaultAmount.IsNil() || vaultAmount.IsZero() {
 					continue
 				}
-				app.Logger().Info(fmt.Sprintf("...... Resolving external vaults: %s lp %s", vaultAddr, lpAddr))
+				// app.Logger().Info(fmt.Sprintf("...... Resolving external vaults: %s lp %s", vaultAddr, lpAddr))
 				err := util.AlmostEqual("vault amount inconsistent", vaultAmount, util.Sum(userHoldings), sdk.NewInt(5000000))
 				if err != nil {
 					panic(err)
@@ -256,11 +254,15 @@ func getStakingHoldings(ctx context.Context, k wasmkeeper.Keeper) (map[string]st
 		balances := make(map[string]sdk.Int)
 		k.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), stakingAddr, prefix, func(key, value []byte) bool {
 			var reward struct {
-				Amount sdk.Int `json:"bond_amount"`
+				Amount              sdk.Int `json:"bond_amount"`
+				StakingTokenVersion int     `json:"staking_token_version"`
 			}
 			json.Unmarshal(value, &reward)
 			holderAddr := sdk.AccAddress(key)
-			balances[holderAddr.String()] = reward.Amount
+			// Handle staking contracts that have multiple staking tokens
+			if reward.StakingTokenVersion == 0 {
+				balances[holderAddr.String()] = reward.Amount
+			}
 			return false
 		})
 		holdings[lpAddress] = stakingHolders{

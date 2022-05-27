@@ -39,7 +39,11 @@ var contractToDenomMap map[string]string
 func init() {
 	contractToDenomMap = make(map[string]string)
 	contractToDenomMap["terra1tlgelulz9pdkhls6uglfn5lmxarx7f2gxtdzh2"] = DenomPLUNA
+	contractToDenomMap["terra17y9qkl8dfkeg4py7n0g5407emqnemc3yqk5rup"] = DenomLUNAX
 	contractToDenomMap["terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"] = DenomCLUNA
+	contractToDenomMap["terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"] = DenomCLUNA
+	contractToDenomMap["terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"] = DenomBLUNA
+	contractToDenomMap["terra1yg3j2s986nyp5z7r2lvt0hx3r0lnd7kwvwwtsc"] = DenomSTLUNA
 	contractToDenomMap["uluna"] = DenomLUNA
 	contractToDenomMap["uusd"] = DenomUST
 	contractToDenomMap[AUST] = DenomAUST
@@ -314,4 +318,66 @@ func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr str
 	if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match\n", cw20Addr), tokenInfo.TotalSupply, Sum(holdings), sdk.NewInt(2000000)); err != nil {
 		fmt.Println(err)
 	}
+}
+
+func SaveDataToFile(file string, data interface{}) error {
+	out, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(file, out, 0666)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, error), file string, app *terra.TerraApp, bl Blacklist) (SnapshotBalanceAggregateMap, error) {
+	if _, err := os.Stat(file); err == nil {
+		data, err := os.ReadFile(file)
+		if err == nil {
+			var snapshot SnapshotBalanceAggregateMap
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	snapshot, err := f(app, bl)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(file, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
+}
+
+func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), file string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	if _, err := os.Stat(file); err == nil {
+		data, err := os.ReadFile(file)
+		if err == nil {
+			var snapshot map[string]map[string]map[string]sdk.Int
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	snapshot, err := f(app)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(file, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
 }

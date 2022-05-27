@@ -53,7 +53,7 @@ type PylonPoolConfig struct {
 	PoolToken  string `json:"dp_token"`
 }
 
-func ExportContract(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
+func ExportContract(app *terra.TerraApp, bl util.Blacklist) (map[string]map[string]sdk.Int, error) {
 	var _ wasmtypes.QueryServer
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
