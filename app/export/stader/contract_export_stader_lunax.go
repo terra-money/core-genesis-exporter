@@ -2,6 +2,7 @@ package stader
 
 import (
 	"context"
+	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -62,4 +63,28 @@ func GetLunaXExchangeRate(ctx context.Context, q wasmtypes.QueryServer) (sdk.Dec
 	}
 
 	return lunaxStateResponse.State.ExchangeRate, nil
+}
+
+func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+
+	ctx := util.PrepCtx(app)
+	qs := util.PrepWasmQueryServer(app)
+
+	er, err := GetLunaXExchangeRate(ctx, qs)
+	if err != nil {
+		return fmt.Errorf("error fetching LunaX <> Luna ER", err)
+	}
+
+	for _, sbs := range snapshot {
+		for i, sb := range sbs {
+			if sb.Denom == util.DenomLUNAX {
+				sbs[i] = util.SnapshotBalance{
+					Denom:   util.DenomLUNA,
+					Balance: er.MulInt(sb.Balance).TruncateInt(),
+				}
+			}
+		}
+	}
+
+	return nil
 }
