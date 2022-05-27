@@ -59,11 +59,14 @@ func (app *TerraApp) ExportAppStateAndValidators(
 		app.prepForZeroHeightGenesis(ctx, jailAllowedAddrs)
 	}
 
-	// wasm stuff
-	//wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
-	//exportAnchorDeposit(ctx, height, wasmQuerier)
+	// genState := app.mm.ExportGenesis(ctx, app.appCodec)
 
-	genState := app.mm.ExportGenesis(ctx, app.appCodec)
+	genState := make(map[string]json.RawMessage)
+	exportModules := []string{"bank", "wasm"}
+	for _, moduleName := range exportModules {
+		genState[moduleName] = app.mm.Modules[moduleName].ExportGenesis(ctx, app.appCodec)
+	}
+
 	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
 		return servertypes.ExportedApp{}, err
