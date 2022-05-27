@@ -41,8 +41,6 @@ import (
 func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// var err error
 
-	fmt.Println(app.LastBlockHeight())
-
 	bl := NewBlacklist()
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))

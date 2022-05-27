@@ -2,7 +2,7 @@ package cw3
 
 import (
 	"encoding/json"
-	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/generic/common"
@@ -33,8 +33,6 @@ func ExportCW3(app *terra.TerraApp, contractsMap common.ContractsMap, bl util.Bl
 		if len(initmsg.Voters) == 0 {
 			continue
 		}
-
-		fmt.Println(addr, initmsg.Voters, string(ci.InitMsg))
 
 		// register this contract in blacklist map
 		bl.RegisterAddress(util.DenomUST, addr)

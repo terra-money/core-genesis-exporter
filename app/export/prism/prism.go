@@ -123,7 +123,7 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	}
 	err = util.AlmostEqual("cLuna doesn't match", cLunaSupply, snapshot.SumOfDenom(util.DenomCLUNA), sdk.NewInt(200000))
 	if err != nil {
-		fmt.Println(err)
+		// fmt.Println(err)
 		// return err
 	}
 

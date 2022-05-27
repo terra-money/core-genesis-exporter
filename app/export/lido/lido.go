@@ -3,7 +3,6 @@ package lido
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
@@ -134,11 +133,11 @@ func ExportLidoRewards(app *terra.TerraApp, snapshot util.SnapshotBalanceAggrega
 
 	err = util.AlmostEqual("stLUNA", snapshot.SumOfDenom(util.DenomSTLUNA), stLunaTotalSupply, sdk.NewInt(100000))
 	if err != nil {
-		fmt.Println(err)
+		app.Logger().Debug(err.Error())
 	}
 	err = util.AlmostEqual("bLUNA", snapshot.SumOfDenom(util.DenomBLUNA), bLunaTotalSupply, sdk.NewInt(100000))
 	if err != nil {
-		fmt.Println(err)
+		app.Logger().Debug(err.Error())
 	}
 
 	lunaRewards, err := getLunaRewards(ctx, app.BankKeeper)

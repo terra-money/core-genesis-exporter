@@ -2,11 +2,12 @@ package loop
 
 import (
 	"fmt"
+	"sort"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
-	"sort"
 )
 
 func ExportLoopLP(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
@@ -57,7 +58,7 @@ func exportLoopPerFactory(app *terra.TerraApp, bl util.Blacklist, factoryAddress
 			ContractAddress: pairAddr,
 			QueryMsg:        []byte("{\"pool\":{}}"),
 		}, &pool); err != nil {
-			fmt.Printf("terraswap: irregular pair, skipping: %s\n", pairAddr)
+			// fmt.Printf("terraswap: irregular pair, skipping: %s\n", pairAddr)
 
 			return false
 		}
