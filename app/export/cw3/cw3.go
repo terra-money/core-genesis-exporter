@@ -159,7 +159,7 @@ func Test(app *terra.TerraApp) error {
 	})
 
 	bl := make(util.Blacklist)
-	err = SplitFundsToVoters(app, snapshot, &bl)
+	err = SplitFundsToVoters(app, snapshot, bl)
 	if err != nil {
 		panic(err)
 	}
