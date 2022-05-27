@@ -3,6 +3,7 @@ package terrafloki
 import (
 	"encoding/json"
 	"fmt"
+
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
@@ -44,8 +45,7 @@ func ExportTerraFloki(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 			StakingTokenVersion int     `json:"staking_token_version"`
 		}
 		if err := json.Unmarshal(value, &reward); err != nil {
-			fmt.Println(fmt.Errorf("error iterating through reward keyspace: %v", err))
-			return true
+			panic(fmt.Errorf("error iterating thorugh reward keyspace: %v", err))
 		}
 		holderAddr := sdk.AccAddress(key)
 		// Handle staking contracts that have multiple staking tokens

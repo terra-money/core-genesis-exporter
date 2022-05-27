@@ -71,33 +71,26 @@ func exportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl ut
 	}
 	wg.Wait()
 	close(items)
-	var balances = make(map[string]map[string]sdk.Int)
-	balances[util.DenomUST] = make(map[string]sdk.Int)
-	balances[util.DenomAUST] = make(map[string]sdk.Int)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for item := range items {
 		// Avoid double counting by only taking aUST amount for pre-attack snapshot
 		// UST amount in aperture is a "virtual" amount as the UST is converted to aUST and used
 		// as collateral in mirror. The UST amount field is a calculated field for the final UST amount
 		// owned by the wallet
 		if snapshotType == util.Snapshot(util.PreAttack) {
-			if balances[util.DenomAUST][item.Holder].IsNil() {
-				balances[util.DenomAUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
-			} else {
-				balances[util.DenomAUST][item.Holder] = balances[util.DenomAUST][item.Holder].Add(item.Info.DetailedInfo.State.AUstAmount)
-			}
+			snapshot.AppendOrAddBalance(item.Holder, util.SnapshotBalance{
+				Denom:   util.DenomAUST,
+				Balance: item.Info.DetailedInfo.State.AUstAmount,
+			})
 			bl.RegisterAddress(util.DenomAUST, item.Contract)
 		} else {
-			if balances[util.DenomUST][item.Holder].IsNil() {
-				balances[util.DenomUST][item.Holder] = item.Info.UstAmount
-			} else {
-				balances[util.DenomUST][item.Holder] = balances[util.DenomUST][item.Holder].Add(item.Info.UstAmount)
-			}
+			snapshot.AppendOrAddBalance(item.Holder, util.SnapshotBalance{
+				Denom:   util.DenomUST,
+				Balance: item.Info.UstAmount,
+			})
 			bl.RegisterAddress(util.DenomUST, item.Contract)
 		}
 	}
-	snapshot := make(util.SnapshotBalanceAggregateMap)
-	snapshot.Add(balances[util.DenomAUST], util.DenomAUST)
-	snapshot.Add(balances[util.DenomUST], util.DenomUST)
 	return snapshot, nil
 }
 
