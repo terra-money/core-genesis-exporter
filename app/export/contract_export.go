@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+
 	"github.com/terra-money/core/app/export/alice"
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/angel"
@@ -60,8 +61,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	}
 
 	// // Export anchor
-	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "./anchor.json", app, bl))
-	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "./anchor-bluna.json", app, bl))
+	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
+	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "anchor-bluna", app, bl))
 
 	// Export Compounders
 	compoundedLps, err := exportCompounders(app, snapshotType)
@@ -74,57 +75,57 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
-	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "./loop.json", app, bl))
+	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "loop", app, bl))
 
 	// Export Vaults
-	suberraSs := checkWithSs(util.CachedSBA(suberra.ExportSuberra, "./suberra.json", app, bl))
+	suberraSs := checkWithSs(util.CachedSBA(suberra.ExportSuberra, "suberra", app, bl))
 	check(suberra.Audit(app, suberraSs))
-	whiteWhaleSs := checkWithSs(util.CachedSBA(whitewhale.ExportWhiteWhaleVaults, "./whitewhale.json", app, bl))
+	whiteWhaleSs := checkWithSs(util.CachedSBA(whitewhale.ExportWhiteWhaleVaults, "whitewhale", app, bl))
 	check(whitewhale.Audit(app, whiteWhaleSs))
-	kujiraSs := checkWithSs(util.CachedSBA(kujira.ExportKujiraVault, "./kujira.json", app, bl))
+	kujiraSs := checkWithSs(util.CachedSBA(kujira.ExportKujiraVault, "kujira", app, bl))
 	check(kujira.Audit(app, kujiraSs))
-	prismSs := checkWithSs(util.CachedSBA(prism.ExportContract, "./prism.json", app, bl))
+	prismSs := checkWithSs(util.CachedSBA(prism.ExportContract, "prism", app, bl))
 	check(prism.Audit(app, prismSs))
-	prismLoSs := checkWithSs(util.CachedSBA(prism.ExportLimitOrderContract, "./prism-limit-order.json", app, bl))
+	prismLoSs := checkWithSs(util.CachedSBA(prism.ExportLimitOrderContract, "prism-limit-order", app, bl))
 	check(prism.AuditLOs(app, prismLoSs))
 	var apertureSs util.SnapshotBalanceAggregateMap
 	if snapshotType == util.Snapshot(util.PreAttack) {
-		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "./aperture-pre.json", app, bl))
+		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "aperture-pre", app, bl))
 	} else {
-		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPostAttack, "./aperture-post.json", app, bl))
+		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPostAttack, "aperture-post", app, bl))
 	}
 
-	edgeSs := checkWithSs(util.CachedSBA(edge.ExportContract, "./edge.json", app, bl))
+	edgeSs := checkWithSs(util.CachedSBA(edge.ExportContract, "edge", app, bl))
 	check(edge.Audit(app, edgeSs))
-	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "./mirror-cdp.json", app, bl))
+	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "mirror-cdp", app, bl))
 	check(mirror.AuditCdps(app, mirrorSs))
-	mirrorLoSs := checkWithSs(util.CachedSBA(mirror.ExportLimitOrderContract, "./mirror-limit-order.json", app, bl))
+	mirrorLoSs := checkWithSs(util.CachedSBA(mirror.ExportLimitOrderContract, "mirror-limit-order", app, bl))
 	check(mirror.AuditLOs(app, mirrorLoSs))
-	inkSs := checkWithSs(util.CachedSBA(ink.ExportContract, "./ink.json", app, bl))
-	lunaXSs := checkWithSs(util.CachedSBA(stader.ExportLunaX, "./stader.json", app, bl))
-	staderPoolSs := checkWithSs(util.CachedSBA(stader.ExportPools, "./stader-pools.json", app, bl))
-	staderStakeSs := checkWithSs(util.CachedSBA(stader.ExportStakePlus, "./stader-stake-plus.json", app, bl))
-	staderVaultSs := checkWithSs(util.CachedSBA(stader.ExportVaults, "./stader-vaults.json", app, bl))
-	angelSs := checkWithSs(util.CachedSBA(angel.ExportEndowments, "./angel.json", app, bl))
-	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "./radomearth.json", app, bl))
-	starTerraSs := checkWithSs(util.CachedSBA(starterra.ExportIDO, "./starterra.json", app, bl))
+	inkSs := checkWithSs(util.CachedSBA(ink.ExportContract, "ink", app, bl))
+	lunaXSs := checkWithSs(util.CachedSBA(stader.ExportLunaX, "stader", app, bl))
+	staderPoolSs := checkWithSs(util.CachedSBA(stader.ExportPools, "stader-pools", app, bl))
+	staderStakeSs := checkWithSs(util.CachedSBA(stader.ExportStakePlus, "stader-stake-plus", app, bl))
+	staderVaultSs := checkWithSs(util.CachedSBA(stader.ExportVaults, "stader-vaults", app, bl))
+	angelSs := checkWithSs(util.CachedSBA(angel.ExportEndowments, "angel", app, bl))
+	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "radomearth", app, bl))
+	starTerraSs := checkWithSs(util.CachedSBA(starterra.ExportIDO, "starterra", app, bl))
 	check(starterra.Audit(app, starTerraSs))
-	starfletSs := checkWithSs(util.CachedSBA(starflet.ExportArbitrageAUST, "starflet.json", app, bl))
-	pylonSs := checkWithSs(util.CachedSBA(pylon.ExportContract, "./pylon.json", app, bl))
+	starfletSs := checkWithSs(util.CachedSBA(starflet.ExportArbitrageAUST, "starflet", app, bl))
+	pylonSs := checkWithSs(util.CachedSBA(pylon.ExportContract, "pylon", app, bl))
 	marsSs := make(util.SnapshotBalanceAggregateMap)
 	if snapshotType == util.Snapshot(util.PreAttack) {
-		marsSs = checkWithSs(util.CachedSBA(mars.ExportContract, "mars.json", app, bl))
+		marsSs = checkWithSs(util.CachedSBA(mars.ExportContract, "mars", app, bl))
 		check(mars.Audit(app, marsSs))
 	}
 
 	// Export miscellaneous
-	flokiSs := checkWithSs(util.CachedSBA(terrafloki.ExportTerraFloki, "./floki.json", app, bl))
-	flokiRefundsSs := checkWithSs(util.CachedSBA(terrafloki.ExportFlokiRefunds, "./floki-refunds.json", app, bl))
-	nebulaSs := checkWithSs(util.CachedSBA(nebula.ExportNebulaCommunityFund, "./nebula.json", app, bl))
-	aliceSs := checkWithSs(util.CachedSBA(alice.ExportAlice, "./alice.json", app, bl))
-	kineticSs := checkWithSs(util.CachedSBA(kinetic.ExportKinetic, "./kinetic.json", app, bl))
-	steakSs := checkWithSs(util.CachedSBA(steak.ExportSteak, "./steak.json", app, bl))
-	astroportLockDropSs := checkWithSs(util.CachedSBA(astroport.ExportAstroportLockdrop, "./astroport-lockdrop.json", app, bl))
+	flokiSs := checkWithSs(util.CachedSBA(terrafloki.ExportTerraFloki, "floki", app, bl))
+	flokiRefundsSs := checkWithSs(util.CachedSBA(terrafloki.ExportFlokiRefunds, "floki-refunds", app, bl))
+	nebulaSs := checkWithSs(util.CachedSBA(nebula.ExportNebulaCommunityFund, "nebula", app, bl))
+	aliceSs := checkWithSs(util.CachedSBA(alice.ExportAlice, "alice", app, bl))
+	kineticSs := checkWithSs(util.CachedSBA(kinetic.ExportKinetic, "kinetic", app, bl))
+	steakSs := checkWithSs(util.CachedSBA(steak.ExportSteak, "steak", app, bl))
+	astroportLockDropSs := checkWithSs(util.CachedSBA(astroport.ExportAstroportLockdrop, "astroport-lockdrop", app, bl))
 	nexusSs, err := nexus.ExportNexus(app, astroportSnapshot, bl)
 	check(err)
 
@@ -185,14 +186,14 @@ func NewBlacklist() util.Blacklist {
 
 func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot) (map[string]map[string]map[string]sdk.Int, error) {
 	finalMap := make(map[string]map[string]map[string]sdk.Int)
-	specLps, err := util.CachedMap3(spectrum.ExportSpecVaultLPs, "./spectrum.json", app)
+	specLps, err := util.CachedMap3(spectrum.ExportSpecVaultLPs, "spectrum", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range specLps {
 		finalMap[k] = v
 	}
-	apolloLps, err := util.CachedMap3(apollo.ExportApolloVaultLPs, "./apollo.json", app)
+	apolloLps, err := util.CachedMap3(apollo.ExportApolloVaultLPs, "apollo", app)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +201,7 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot) (map[stri
 		finalMap[k] = v
 	}
 	if snaphotType == util.Snapshot(util.PreAttack) {
-		marsLps, err := util.CachedMap3(mars.ExportFieldOfMarsLpTokens, "./mars-field.json", app)
+		marsLps, err := util.CachedMap3(mars.ExportFieldOfMarsLpTokens, "mars-field", app)
 		if err != nil {
 			return nil, err
 		}
@@ -208,7 +209,7 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot) (map[stri
 			finalMap[k] = v
 		}
 	}
-	mirrorLps, err := util.CachedMap3(mirror.ExportMirrorLpStakers, "./mirror.json", app)
+	mirrorLps, err := util.CachedMap3(mirror.ExportMirrorLpStakers, "mirror", app)
 	if err != nil {
 		return nil, err
 	}
