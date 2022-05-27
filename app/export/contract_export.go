@@ -2,6 +2,8 @@ package app
 
 import (
 	"fmt"
+	"github.com/terra-money/core/app/export/generic"
+	"github.com/terra-money/core/app/export/kinetic"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -31,11 +33,23 @@ import (
 func ExportContracts(app *terra.TerraApp) {
 	// var err error
 
+	fmt.Println(app.LastBlockHeight())
+
 	bl := NewBlacklist()
 	// snapshot := make(util.SnapshotBalanceAggregateMap)
 
+	//ctx := util.PrepCtx(app)
+	//a := app.BankKeeper.GetAccountsBalances(sdk.UnwrapSDKContext(ctx))
+
+	fmt.Println(generic.ExportGenericContracts(app, bl))
+
+	return
+
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d", app.LastBlockHeight()))
+
+	kinetic.ExportKinetic(app, bl)
+	return
 
 	// Export Compounders
 	compoundedLps, err := exportCompounders(app)
