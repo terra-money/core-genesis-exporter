@@ -3,7 +3,6 @@ package mirror
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -13,9 +12,6 @@ import (
 )
 
 var (
-	MirrorLimitOrderTokens = []string{
-		util.DenomUST,
-	}
 	MirrorLimitOrder = "terra1zpr8tq3ts96mthcdkukmqq4y9lhw0ycevsnw89"
 )
 
@@ -30,22 +26,16 @@ func ExportLimitOrderContract(
 	if err != nil {
 		return nil, err
 	}
+
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	for _, order := range orders {
-		for _, denom := range MirrorLimitOrderTokens {
-			if order.OfferAsset.Info.Token.Addr == denom || order.OfferAsset.Info.NativeToken.Denom == denom {
-				snapshot[order.Bidder] = append(snapshot[order.Bidder], util.SnapshotBalance{
-					Denom:   denom,
-					Balance: order.OfferAsset.Amount.Sub(order.FilledOfferAmount),
-				})
-			}
+		if order.OfferAsset.Info.NativeToken.Denom == util.DenomUST {
+			snapshot.AppendOrAddBalance(order.Bidder, util.SnapshotBalance{Denom: util.DenomUST, Balance: order.OfferAsset.Amount.Sub(order.FilledOfferAmount)})
 		}
 	}
 
 	// Blacklist resolved contracts
-	for _, denom := range MirrorLimitOrderTokens {
-		bl.RegisterAddress(denom, MirrorLimitOrder)
-	}
+	bl.RegisterAddress(util.DenomUST, MirrorLimitOrder)
 
 	return snapshot, nil
 }
@@ -53,24 +43,16 @@ func ExportLimitOrderContract(
 func AuditLOs(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
 	app.Logger().Info("Audit -- Mirro LO")
 	ctx := util.PrepCtx(app)
-	q := util.PrepWasmQueryServer(app)
 
-	for _, denom := range MirrorLimitOrderTokens {
-		var contractBalance sdk.Int
-		var err error
-		if strings.Contains(denom, "terra") {
-			contractBalance, err = util.GetCW20Balance(ctx, q, denom, MirrorLimitOrder)
-		} else {
-			contractBalance, err = util.GetNativeBalance(ctx, app.BankKeeper, denom, MirrorLimitOrder)
-		}
-		if err != nil {
-			return err
-		}
-		sumOfSnapshot := snapshot.SumOfDenom(denom)
-		err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
-		if err != nil {
-			return err
-		}
+	contractBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomUST, MirrorLimitOrder)
+	if err != nil {
+		return err
+	}
+
+	sumOfSnapshot := snapshot.SumOfDenom(util.DenomUST)
+	err = util.AlmostEqual(util.DenomUST, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -111,6 +93,7 @@ func getAllOrders(ctx context.Context, q types.QueryServer) ([]order, error) {
 		if err != nil {
 			return err
 		}
+
 		allOrders = append(allOrders, orders.Orders...)
 		if len(orders.Orders) < limit {
 			return nil

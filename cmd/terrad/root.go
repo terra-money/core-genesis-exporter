@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"os"
@@ -29,7 +30,9 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	"github.com/cosmos/cosmos-sdk/x/crisis"
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
+	"github.com/cosmos/cosmos-sdk/x/staking"
 
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	terraapp "github.com/terra-money/core/app"
 	export "github.com/terra-money/core/app/export"
 	terralegacy "github.com/terra-money/core/app/legacy"
@@ -263,18 +266,35 @@ func (a appCreator) appExport(
 	} else {
 		terraApp = terraapp.NewTerraApp(logger, db, traceStore, true, map[int64]bool{}, homePath, cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)), a.encodingConfig, appOpts, wasmconfig.DefaultConfig())
 	}
-	//
-	//// handle contract exports here
-	//
-	//// first for pre-attack height
-	//snapshotTerraApp := terraapp.NewTerraApp(logger, db, traceStore, false, map[int64]bool{}, homePath, cast.ToUint(appOpts.Get(server.FlagInvCheckPeriod)), a.encodingConfig, appOpts, wasmconfig.DefaultConfig())
-	//snapshotTerraApp.LoadVersion(6000000)
-	//
-	//// second for "launch" height
-	//
-	//terraapp.ExportAnchorDeposit(snapshotTerraApp, wasmkeeper.NewQuerier(snapshotTerraApp.WasmKeeper))
 
-	// return terraApp.ExportAppStateAndValidators(forZeroHeight, jailAllowedAddrs)
-	export.ExportContracts(terraApp)
-	return terraApp.TestExportAllStore()
+	// export partial state with validator
+	ctx := terraApp.NewContext(true, tmproto.Header{Height: terraApp.LastBlockHeight()})
+	height = terraApp.LastBlockHeight() + 1
+
+	// run contracts first
+	bank := export.ExportContracts(terraApp)
+	bankState, err := json.Marshal(bank)
+
+	genState := make(map[string]json.RawMessage)
+	genState["bank"] = bankState
+
+	// partial export
+	exportModules := []string{"wasm"}
+
+	for _, moduleName := range exportModules {
+		genState[moduleName] = terraApp.ModuleManager().Modules[moduleName].ExportGenesis(ctx, terraApp.AppCodec())
+	}
+
+	appState, err := json.MarshalIndent(genState, "", "  ")
+	if err != nil {
+		return servertypes.ExportedApp{}, err
+	}
+
+	validators, err := staking.WriteValidators(ctx, terraApp.StakingKeeper)
+	return servertypes.ExportedApp{
+		AppState:        appState,
+		Validators:      validators,
+		Height:          height,
+		ConsensusParams: terraApp.BaseApp.GetConsensusParams(ctx),
+	}, err
 }
