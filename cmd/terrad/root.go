@@ -34,6 +34,7 @@ import (
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	terraapp "github.com/terra-money/core/app"
+	export "github.com/terra-money/core/app/export"
 	terralegacy "github.com/terra-money/core/app/legacy"
 	"github.com/terra-money/core/app/params"
 	authcustomcli "github.com/terra-money/core/custom/auth/client/cli"
@@ -270,17 +271,19 @@ func (a appCreator) appExport(
 	ctx := terraApp.NewContext(true, tmproto.Header{Height: terraApp.LastBlockHeight()})
 	height = terraApp.LastBlockHeight() + 1
 	genState := make(map[string]json.RawMessage)
-	exportModules := []string{"bank", "wasm"}
+	exportModules := []string{"wasm"}
 	for _, moduleName := range exportModules {
 		genState[moduleName] = terraApp.ModuleManager().Modules[moduleName].ExportGenesis(ctx, terraApp.AppCodec())
 	}
+
+	bank := export.ExportContracts(terraApp)
+	bankState, err := json.Marshal(bank)
+	genState["bank"] = bankState
 
 	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
 		return servertypes.ExportedApp{}, err
 	}
-
-	// export.ExportContracts(terraApp)
 
 	validators, err := staking.WriteValidators(ctx, terraApp.StakingKeeper)
 	return servertypes.ExportedApp{

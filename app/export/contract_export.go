@@ -2,8 +2,10 @@ package app
 
 import (
 	"fmt"
+
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/generic"
+	"github.com/terra-money/core/app/export/native"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank/types"
@@ -115,6 +117,14 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
 
+	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app))
+	nativeBalances := checkWithSs(native.ExportAllNativeBalances(app))
+
+	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
+	snapshot.ApplyBlackList(bl)
+
+	finalAudit(app, snapshot, util.Snapshot(util.PreAttack))
+
 	return snapshot.ExportToBalances()
 }
 
@@ -170,4 +180,27 @@ func check(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, snapshotType util.Snapshot) error {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	if snapshotType == util.Snapshot(util.PreAttack) {
+		// expect to have aUST in the snapshot
+		aUstHoldings := snapshot.FilterByDenom(util.DenomAUST)
+		util.AssertCw20Supply(ctx, q, util.AUST, aUstHoldings)
+
+		// expect to have LUNA in the snapshot
+		lunaHoldings := snapshot.FilterByDenom(util.DenomLUNA)
+		util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomLUNA, lunaHoldings)
+	} else {
+		// expect to have UST in the snapshot
+		ustHoldings := snapshot.FilterByDenom(util.DenomUST)
+		util.AssertNativeSupply(ctx, app.BankKeeper, util.AUST, ustHoldings)
+
+		// expect to have LUNA in the snapshot
+		lunaHoldings := snapshot.FilterByDenom(util.DenomLUNA)
+		util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomLUNA, lunaHoldings)
+	}
+	return nil
 }

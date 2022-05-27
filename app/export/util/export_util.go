@@ -13,6 +13,8 @@ import (
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
+	bankkeeper "github.com/cosmos/cosmos-sdk/x/bank/keeper"
+	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	terra "github.com/terra-money/core/app"
@@ -341,6 +343,22 @@ func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr str
 	if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match\n", cw20Addr), tokenInfo.TotalSupply, Sum(holdings), sdk.NewInt(2000000)); err != nil {
 		fmt.Println(err)
 	}
+}
+
+func AssertNativeSupply(ctx context.Context, b bankkeeper.Keeper, denom string, holdings BalanceMap) {
+	totalSupplyRes, err := b.TotalSupply(ctx, &banktypes.QueryTotalSupplyRequest{})
+	if err != nil {
+		panic(err)
+	}
+	for _, coin := range totalSupplyRes.Supply {
+		if coin.Denom == denom {
+			if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match\n", denom), coin.Amount, Sum(holdings), sdk.NewInt(2000000)); err != nil {
+				fmt.Println(err)
+				return
+			}
+		}
+	}
+	panic(fmt.Errorf("denom %s not found", denom))
 }
 
 func SaveDataToFile(file string, data interface{}) error {
