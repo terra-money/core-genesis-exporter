@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-
 	"github.com/terra-money/core/app/export/alice"
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/angel"
@@ -168,7 +167,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		}
 	}
 
-	finalAudit(app, snapshot, util.Snapshot(util.PreAttack))
+	finalAudit(app, snapshot, snapshotType)
 
 	return snapshot.ExportToBalances()
 }
@@ -235,6 +234,7 @@ func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, 
 	q := util.PrepWasmQueryServer(app)
 
 	// assert no other staking derivatives exist in the snapshot
+	util.AssertZeroSupply(snapshot, util.AUST) // prevent accidental address as denom
 	util.AssertZeroSupply(snapshot, util.DenomBLUNA)
 	util.AssertZeroSupply(snapshot, util.DenomSTLUNA)
 	util.AssertZeroSupply(snapshot, util.DenomSTEAK)
@@ -260,7 +260,7 @@ func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, 
 	} else {
 		// expect to have UST in the snapshot
 		ustHoldings := snapshot.FilterByDenom(util.DenomUST)
-		err := util.AssertNativeSupply(ctx, app.BankKeeper, util.AUST, ustHoldings)
+		err := util.AssertNativeSupply(ctx, app.BankKeeper, util.DenomUST, ustHoldings)
 		if err != nil {
 			app.Logger().Info(err.Error())
 		}

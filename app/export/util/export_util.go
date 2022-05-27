@@ -347,19 +347,15 @@ func AssertCw20Supply(ctx context.Context, q wasmtypes.QueryServer, cw20Addr str
 }
 
 func AssertNativeSupply(ctx context.Context, b bankkeeper.Keeper, denom string, holdings BalanceMap) error {
-	totalSupplyRes, err := b.TotalSupply(ctx, &banktypes.QueryTotalSupplyRequest{})
+	supply, err := b.SupplyOf(ctx, &banktypes.QuerySupplyOfRequest{Denom: denom})
 	if err != nil {
-		panic(err)
+		return err
 	}
-	for _, coin := range totalSupplyRes.Supply {
-		if coin.Denom == denom {
-			if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match\n", denom), coin.Amount, Sum(holdings), sdk.NewInt(2000000)); err != nil {
-				return err
-			} else {
-				return nil
-			}
-		}
+
+	if err := AlmostEqual(fmt.Sprintf("token %s supply doesnt match", denom), supply.Amount.Amount, Sum(holdings), sdk.NewInt(2000000)); err != nil {
+		return err
 	}
+
 	panic(fmt.Errorf("denom %s not found", denom))
 }
 
@@ -426,7 +422,8 @@ func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.In
 }
 
 func AssertZeroSupply(snapshot SnapshotBalanceAggregateMap, denom string) {
-	if !Sum(snapshot.FilterByDenom(denom)).IsZero() {
-		panic(fmt.Errorf("total supply invariant: denom %s exsists", denom))
+	s := Sum(snapshot.FilterByDenom(denom))
+	if !s.IsZero() {
+		fmt.Println(fmt.Errorf("total supply invariant: denom %s exsists: %s", denom, s.String()))
 	}
 }
