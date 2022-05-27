@@ -234,14 +234,14 @@ func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, 
 	q := util.PrepWasmQueryServer(app)
 
 	// assert no other staking derivatives exist in the snapshot
-	util.AssertZeroSupply(snapshot, util.AUST) // prevent accidental address as denom
-	util.AssertZeroSupply(snapshot, util.DenomBLUNA)
-	util.AssertZeroSupply(snapshot, util.DenomSTLUNA)
-	util.AssertZeroSupply(snapshot, util.DenomSTEAK)
-	util.AssertZeroSupply(snapshot, util.DenomNLUNA)
-	util.AssertZeroSupply(snapshot, util.DenomCLUNA)
-	util.AssertZeroSupply(snapshot, util.DenomPLUNA)
-	util.AssertZeroSupply(snapshot, util.DenomLUNAX)
+	// util.AssertZeroSupply(snapshot, util.AUST) // prevent accidental address as denom
+	// util.AssertZeroSupply(snapshot, util.DenomBLUNA)
+	// util.AssertZeroSupply(snapshot, util.DenomSTLUNA)
+	// util.AssertZeroSupply(snapshot, util.DenomSTEAK)
+	// util.AssertZeroSupply(snapshot, util.DenomNLUNA)
+	// util.AssertZeroSupply(snapshot, util.DenomCLUNA)
+	// util.AssertZeroSupply(snapshot, util.DenomPLUNA)
+	// util.AssertZeroSupply(snapshot, util.DenomLUNAX)
 
 	if snapshotType == util.Snapshot(util.PreAttack) {
 		// expect to have aUST in the snapshot
