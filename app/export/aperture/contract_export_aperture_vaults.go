@@ -80,10 +80,19 @@ func exportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl ut
 		// as collateral in mirror. The UST amount field is a calculated field for the final UST amount
 		// owned by the wallet
 		if snapshotType == util.Snapshot(util.PreAttack) {
-			balances[util.DenomAUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
+			if balances[util.DenomAUST][item.Holder].IsNil() {
+				balances[util.DenomAUST][item.Holder] = item.Info.DetailedInfo.State.AUstAmount
+			} else {
+				balances[util.DenomAUST][item.Holder] = balances[util.DenomAUST][item.Holder].Add(item.Info.DetailedInfo.State.AUstAmount)
+			}
 			bl.RegisterAddress(util.DenomAUST, item.Contract)
 		} else {
-			balances[util.DenomUST][item.Holder] = item.Info.UstAmount
+			if balances[util.DenomUST][item.Holder].IsNil() {
+				balances[util.DenomUST][item.Holder] = item.Info.UstAmount
+			} else {
+				balances[util.DenomUST][item.Holder] = balances[util.DenomUST][item.Holder].Add(item.Info.UstAmount)
+			}
+			bl.RegisterAddress(util.DenomUST, item.Contract)
 		}
 	}
 	snapshot := make(util.SnapshotBalanceAggregateMap)
