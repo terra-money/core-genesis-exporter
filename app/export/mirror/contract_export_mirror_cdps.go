@@ -25,6 +25,7 @@ var (
 )
 
 func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting Mirror CDPs")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
@@ -54,7 +55,7 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 					snapshot.AppendOrAddBalance(position.Owner, util.SnapshotBalance{Denom: util.DenomLUNA, Balance: lunaAmount})
 				} else {
 					// normal case (uluna, uusd, or AUST)
-					snapshot.AppendOrAddBalance(position.Owner, util.SnapshotBalance{Denom: denom, Balance: position.Collateral.Amount})
+					snapshot.AppendOrAddBalance(position.Owner, util.SnapshotBalance{Denom: util.MapContractToDenom(denom), Balance: position.Collateral.Amount})
 				}
 				break
 			}
@@ -62,16 +63,18 @@ func ExportMirrorCdps(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBala
 	}
 
 	// blacklist mint contract
-	for _, denom := range MirrorLimitOrderTokens {
+	for _, denom := range MirrorRelevantCollaterals {
 		bl.RegisterAddress(denom, MirrorMint)
 	}
+	bl.RegisterAddress(util.DenomAUST, MirrorMint)
 	// also blacklist mirror lock to prevent double incenvitizing users shorting
 	bl.RegisterAddress(util.DenomUST, MirrorLock)
 
 	return snapshot, nil
 }
 
-func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+func AuditCdps(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	app.Logger().Info("Audit -- Mirror")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
@@ -116,7 +119,7 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 			expectedLunaBalance := snapshot.SumOfDenom(denom).Sub(lunaXValue)
 			err = util.AlmostEqual(denom, contractBalance, expectedLunaBalance, sdk.NewInt(1000000))
 		} else {
-			sumOfSnapshot := snapshot.SumOfDenom(denom)
+			sumOfSnapshot := snapshot.SumOfDenom(util.MapContractToDenom(denom))
 			err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(1000000))
 		}
 

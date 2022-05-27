@@ -9,7 +9,6 @@ import (
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/x/wasm/types"
-	wasmtype "github.com/terra-money/core/x/wasm/types"
 )
 
 var (
@@ -23,9 +22,9 @@ var (
 
 func ExportLimitOrderContract(
 	app *terra.TerraApp,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (util.SnapshotBalanceAggregateMap, error) {
-	app.Logger().Info("Exporting Prism Limit Orders")
+	app.Logger().Info("Exporting Prism LO")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	orders, err := getAllOrders(ctx, q)
@@ -48,26 +47,47 @@ func ExportLimitOrderContract(
 		}
 	}
 
+	// register all pairs as blacklist.
+	bl.RegisterAddress(util.DenomAUST, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomUST, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomBLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomSTLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomPLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomCLUNA, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomSTEAK, PrismLimitOrder)
+	bl.RegisterAddress(util.DenomLUNAX, PrismLimitOrder)
+
 	snapshot := make(util.SnapshotBalanceAggregateMap)
-	// Audit
 	for _, denom := range PrismLimitOrderTokens {
 		bl.RegisterAddress(util.MapContractToDenom(denom), PrismLimitOrder)
+		snapshot.Add(holdings[denom], util.MapContractToDenom(denom))
+	}
+	return snapshot, nil
+}
+
+func AuditLOs(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	app.Logger().Info("Audit -- Prism LO")
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	for _, denom := range PrismLimitOrderTokens {
 		var contractBalance sdk.Int
+		var err error
 		if strings.Contains(denom, "terra") {
 			contractBalance, err = util.GetCW20Balance(ctx, q, denom, PrismLimitOrder)
 		} else {
 			contractBalance, err = util.GetNativeBalance(ctx, app.BankKeeper, denom, PrismLimitOrder)
 		}
 		if err != nil {
-			return nil, err
+			return err
 		}
-		err = util.AlmostEqual(denom, contractBalance, util.Sum(holdings[denom]), sdk.NewInt(10000))
+		err = util.AlmostEqual(denom, contractBalance, snapshot.SumOfDenom(util.MapContractToDenom(denom)), sdk.NewInt(10000))
 		if err != nil {
-			return nil, err
+			return err
 		}
-		snapshot.Add(holdings[denom], util.MapContractToDenom(denom))
 	}
-	return snapshot, nil
+
+	return nil
 }
 
 type orderRes struct {
@@ -86,7 +106,7 @@ type order struct {
 	} `json:"offer_asset"`
 }
 
-func getAllOrders(ctx context.Context, q wasmtype.QueryServer) ([]order, error) {
+func getAllOrders(ctx context.Context, q types.QueryServer) ([]order, error) {
 	var getOrders func(startAfter int) error
 	limit := 10
 	var allOrders []order

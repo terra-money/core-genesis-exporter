@@ -61,45 +61,45 @@ func ExportGenesis(ctx sdk.Context, keeper keeper.Keeper) *types.GenesisState {
 		panic(err)
 	}
 
-	for i := uint64(1); i <= lastCodeID; i++ {
-		codeInfo, err := keeper.GetCodeInfo(ctx, i)
-		if err != nil {
-			panic(err)
-		}
+	// for i := uint64(1); i <= lastCodeID; i++ {
+	// 	codeInfo, err := keeper.GetCodeInfo(ctx, i)
+	// 	if err != nil {
+	// 		panic(err)
+	// 	}
 
-		var bytecode []byte
-		if len(codeInfo.CodeHash) != 0 {
-			bytecode, err = keeper.GetByteCode(ctx, i)
-			if err != nil {
-				panic(err)
-			}
-		}
+	// 	var bytecode []byte
+	// 	if len(codeInfo.CodeHash) != 0 {
+	// 		bytecode, err = keeper.GetByteCode(ctx, i)
+	// 		if err != nil {
+	// 			panic(err)
+	// 		}
+	// 	}
 
-		codes = append(codes, types.Code{
-			CodeInfo:  codeInfo,
-			CodeBytes: bytecode,
-		})
-	}
+	// 	codes = append(codes, types.Code{
+	// 		CodeInfo:  codeInfo,
+	// 		CodeBytes: bytecode,
+	// 	})
+	// }
 
 	keeper.IterateContractInfo(ctx, func(contract types.ContractInfo) bool {
-		contractAddr, err := sdk.AccAddressFromBech32(contract.Address)
-		if err != nil {
-			panic(err)
-		}
+		// contractAddr, err := sdk.AccAddressFromBech32(contract.Address)
+		// if err != nil {
+		// 	panic(err)
+		// }
 
-		contractStateIterator := keeper.GetContractStoreIterator(ctx, contractAddr)
-		var models []types.Model
-		for ; contractStateIterator.Valid(); contractStateIterator.Next() {
-			m := types.Model{
-				Key:   contractStateIterator.Key(),
-				Value: contractStateIterator.Value(),
-			}
-			models = append(models, m)
-		}
+		// contractStateIterator := keeper.GetContractStoreIterator(ctx, contractAddr)
+		// var models []types.Model
+		// for ; contractStateIterator.Valid(); contractStateIterator.Next() {
+		// 	m := types.Model{
+		// 		Key:   contractStateIterator.Key(),
+		// 		Value: contractStateIterator.Value(),
+		// 	}
+		// 	models = append(models, m)
+		// }
 
 		contracts = append(contracts, types.Contract{
-			ContractInfo:  contract,
-			ContractStore: models,
+			ContractInfo: contract,
+			// ContractStore: models,
 		})
 
 		return false

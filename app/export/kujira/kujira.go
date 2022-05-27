@@ -2,7 +2,6 @@ package kujira
 
 import (
 	"encoding/json"
-	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -16,7 +15,7 @@ const (
 	KujiraUstPair   = "terra1zkyrfyq7x9v5vqnnrznn3kvj35az4f6jxftrl2"
 )
 
-func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportKujiraVault(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Kujira vaults")
 	ctx := util.PrepCtx(app)
 	prefix := util.GeneratePrefix("bid")
@@ -53,60 +52,25 @@ func ExportKujiraVault(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBa
 		return false
 	})
 
-	q := util.PrepWasmQueryServer(app)
-	vaultBalance, err := util.GetCW20Balance(ctx, q, util.AUST, KujiraAUstVault)
-	if err != nil {
-		return nil, err
-	}
-
-	// Small rounding error (.00006%) here due to the way Kujira saves amount of aUST deposited
-	// When converting aUST to UST, the anchor exchange rate is used instead of
-	// listening to the hook of the new UST balance
-	err = util.AlmostEqual("kujira aUST", vaultBalance, util.Sum(balances), sdk.NewInt(50000000))
-	if err != nil {
-		return nil, err
-	}
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	bl.RegisterAddress(util.DenomAUST, KujiraAUstVault)
 	snapshot.Add(balances, util.DenomAUST)
 	return snapshot, nil
 }
 
-// IGNORE: should be accounted for by terraswap side
-func ExportKujiraStaking(app *terra.TerraApp, bl *util.Blacklist) (map[string]map[string]sdk.Int, error) {
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
 	ctx := util.PrepCtx(app)
-	prefix := util.GeneratePrefix("reward")
-	stakeAddr, err := sdk.AccAddressFromBech32(KujiraStaking)
-	if err != nil {
-		return nil, err
-	}
-
-	lpBalances := make(map[string]map[string]sdk.Int)
-	balances := make(map[string]sdk.Int)
-	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), stakeAddr, prefix, func(key, value []byte) bool {
-		var reward struct {
-			Amount sdk.Int `json:"bond_amount"`
-		}
-		json.Unmarshal(value, &reward)
-		holderAddr := sdk.AccAddress(key)
-		balances[holderAddr.String()] = reward.Amount
-		return false
-	})
-
 	q := util.PrepWasmQueryServer(app)
-	vaultBalance, err := util.GetCW20Balance(ctx, q, KujiraUstLP, KujiraStaking)
+	vaultBalance, err := util.GetCW20Balance(ctx, q, util.AUST, KujiraAUstVault)
 	if err != nil {
-		return nil, err
+		return err
 	}
-
-	sumVault := sdk.NewInt(0)
-	for _, b := range balances {
-		sumVault = sumVault.Add(b)
+	// Small rounding error (.00006%) here due to the way Kujira saves amount of aUST deposited
+	// When converting aUST to UST, the anchor exchange rate is used instead of
+	// listening to the hook of the new UST balance
+	err = util.AlmostEqual("kujira aUST", vaultBalance, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(50000000))
+	if err != nil {
+		return err
 	}
-
-	fmt.Printf("LP in staking: %s, sum of depositors: %s, difference: %s\n", vaultBalance, sumVault, vaultBalance.Sub(sumVault))
-	bl.RegisterAddress(util.DenomUST, KujiraUstPair)
-	bl.RegisterAddress(KujiraUstLP, KujiraStaking)
-	lpBalances[KujiraUstLP] = balances
-	return lpBalances, nil
+	return nil
 }

@@ -14,8 +14,8 @@ var (
 	LunaXState = "terra1xacqx447msqp46qmv8k2sq6v5jh9fdj37az898"
 )
 
-// ExportLunaX get LunaX balance for all accounts, multiply ER
-func ExportLunaX(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+// ExportLunaX get Luna balance for all accounts, multiply ER
+func ExportLunaX(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)

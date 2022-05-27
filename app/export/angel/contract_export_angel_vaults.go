@@ -17,7 +17,7 @@ const (
 )
 
 // ExportEndowments Export aUST endowments
-func ExportEndowments(app *terra.TerraApp, bl *util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+func ExportEndowments(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)

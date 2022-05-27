@@ -9,9 +9,7 @@ import (
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
 
-	// wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 	"github.com/terra-money/core/x/wasm/types"
-	wasmtype "github.com/terra-money/core/x/wasm/types"
 )
 
 var (
@@ -23,7 +21,7 @@ var (
 
 func ExportLimitOrderContract(
 	app *terra.TerraApp,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Mirror Limit Orders")
 	ctx := util.PrepCtx(app)
@@ -49,24 +47,33 @@ func ExportLimitOrderContract(
 		bl.RegisterAddress(denom, MirrorLimitOrder)
 	}
 
-	// Audit
+	return snapshot, nil
+}
+
+func AuditLOs(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	app.Logger().Info("Audit -- Mirro LO")
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+
 	for _, denom := range MirrorLimitOrderTokens {
 		var contractBalance sdk.Int
+		var err error
 		if strings.Contains(denom, "terra") {
 			contractBalance, err = util.GetCW20Balance(ctx, q, denom, MirrorLimitOrder)
 		} else {
 			contractBalance, err = util.GetNativeBalance(ctx, app.BankKeeper, denom, MirrorLimitOrder)
 		}
 		if err != nil {
-			return snapshot, err
+			return err
 		}
 		sumOfSnapshot := snapshot.SumOfDenom(denom)
 		err = util.AlmostEqual(denom, contractBalance, sumOfSnapshot, sdk.NewInt(10000))
 		if err != nil {
-			return snapshot, err
+			return err
 		}
 	}
-	return snapshot, nil
+
+	return nil
 }
 
 type orderRes struct {
@@ -90,7 +97,7 @@ type order struct {
 	FilledOfferAmount sdk.Int `json:"filled_offer_amount"`
 }
 
-func getAllOrders(ctx context.Context, q wasmtype.QueryServer) ([]order, error) {
+func getAllOrders(ctx context.Context, q types.QueryServer) ([]order, error) {
 	var getOrders func(startAfter int) error
 	limit := 10
 	var allOrders []order

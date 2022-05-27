@@ -53,7 +53,7 @@ type Vault struct {
 // 2. Individual interest vaults per user (InkVault)
 func ExportContract(
 	app *terra.TerraApp,
-	bl *util.Blacklist,
+	bl util.Blacklist,
 ) (util.SnapshotBalanceAggregateMap, error) {
 	app.Logger().Info("Exporting Ink Protocol")
 	ctx := util.PrepCtx(app)

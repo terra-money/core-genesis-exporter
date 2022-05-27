@@ -22,14 +22,16 @@ import (
 	"github.com/terra-money/core/app/export/randomearth"
 	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/stader"
+	"github.com/terra-money/core/app/export/starflet"
 	"github.com/terra-money/core/app/export/starterra"
+	"github.com/terra-money/core/app/export/suberra"
 	"github.com/terra-money/core/app/export/terraswap"
 	"github.com/terra-money/core/app/export/util"
 	"github.com/terra-money/core/app/export/whitewhale"
 )
 
 func ExportContracts(app *terra.TerraApp) {
-	var err error
+	// var err error
 
 	fmt.Println(app.LastBlockHeight())
 
@@ -55,44 +57,61 @@ func ExportContracts(app *terra.TerraApp) {
 		panic(err)
 	}
 
+	check(mirror.AuditCompounders(app, compoundedLps))
+
 	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
 	loopSnapshot := checkWithSs(loop.ExportLoopLP(app, bl))
 
 	// Export Vaults
-	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, &bl))
-	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, &bl))
-	prismSs := checkWithSs(prism.ExportLimitOrderContract(app, &bl))
-	apertureSs := checkWithSs(aperture.ExportApertureVaults(app, util.Snapshot(util.PreAttack), &bl))
-	edgeSs := checkWithSs(edge.ExportContract(app, &bl))
-	mirrorSs := checkWithSs(mirror.ExportMirrorCdps(app, bl))
-	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, &bl))
-	inkSs := checkWithSs(ink.ExportContract(app, &bl))
-	lunaXSs := checkWithSs(stader.ExportLunaX(app, &bl))
-	staderPoolSs := checkWithSs(stader.ExportPools(app, &bl))
-	staderStakeSs := checkWithSs(stader.ExportStakePlus(app, &bl))
-	staderVaultSs := checkWithSs(stader.ExportVaults(app, &bl))
-	angelSs := checkWithSs(angel.ExportEndowments(app, &bl))
-	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, &bl))
-	startTerraSs := checkWithSs(starterra.ExportIDO(app, &bl))
-
-	// Independent snapshot audits and sanity checks
-	check(mirror.Audit(app, mirrorSs))
+	suberraSs := checkWithSs(suberra.ExportSuberra(app, bl))
+	check(suberra.Audit(app, suberraSs))
+	whiteWhaleSs := checkWithSs(whitewhale.ExportWhiteWhaleVaults(app, bl))
+	check(whitewhale.Audit(app, whiteWhaleSs))
+	kujiraSs := checkWithSs(kujira.ExportKujiraVault(app, bl))
+	check(kujira.Audit(app, kujiraSs))
+	prismSs := checkWithSs(prism.ExportContract(app, &bl))
+	check(prism.Audit(app, prismSs))
+	prismLoSs := checkWithSs(prism.ExportLimitOrderContract(app, bl))
+	check(prism.AuditLOs(app, prismLoSs))
+	apertureSs := checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPreAttack, "./aperture-pre.json", app, bl))
+	edgeSs := checkWithSs(edge.ExportContract(app, bl))
+	check(edge.Audit(app, edgeSs))
+	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "./mirror-cdp.json", app, bl))
+	check(mirror.AuditCdps(app, mirrorSs))
+	mirrorLoSs := checkWithSs(mirror.ExportLimitOrderContract(app, bl))
+	check(mirror.AuditLOs(app, mirrorLoSs))
+	inkSs := checkWithSs(ink.ExportContract(app, bl))
+	lunaXSs := checkWithSs(stader.ExportLunaX(app, bl))
+	staderPoolSs := checkWithSs(stader.ExportPools(app, bl))
+	staderStakeSs := checkWithSs(stader.ExportStakePlus(app, bl))
+	staderVaultSs := checkWithSs(stader.ExportVaults(app, bl))
+	angelSs := checkWithSs(angel.ExportEndowments(app, bl))
+	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, bl))
+	starTerraSs := checkWithSs(starterra.ExportIDO(app, bl))
+	check(starterra.Audit(app, starTerraSs))
+	marsSs := checkWithSs(mars.ExportContract(app, bl))
+	check(mars.Audit(app, marsSs))
+	starfletSs := checkWithSs(starflet.ExportArbitrageAUST(app, &bl))
 
 	snapshot := util.MergeSnapshots(
-		terraswapSnapshot, loopSnapshot, astroportSnapshot,
-		whiteWhaleSs, kujiraSs, prismSs, apertureSs,
+		terraswapSnapshot,
+		loopSnapshot,
+		astroportSnapshot,
+		whiteWhaleSs, kujiraSs, prismSs,
+		apertureSs,
 		edgeSs, mirrorSs, mirrorLoSs, inkSs,
 		lunaXSs, staderPoolSs, staderStakeSs, staderVaultSs,
-		angelSs, randomEarthSs, startTerraSs,
+		angelSs, randomEarthSs, starTerraSs,
+		whiteWhaleSs, kujiraSs, prismSs, prismLoSs,
+		edgeSs, mirrorSs, inkSs, marsSs, starfletSs,
 	)
 
 	// Export Liquid Staking
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
-	check(prism.ExportContract(app, snapshot, &bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
 }
 
@@ -106,28 +125,28 @@ func NewBlacklist() util.Blacklist {
 
 func exportCompounders(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
 	finalMap := make(map[string]map[string]map[string]sdk.Int)
-	specLps, err := spectrum.ExportSpecVaultLPs(app)
+	specLps, err := util.CachedMap3(spectrum.ExportSpecVaultLPs, "./spectrum.json", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range specLps {
 		finalMap[k] = v
 	}
-	apolloLps, err := apollo.ExportApolloVaultLPs(app)
+	apolloLps, err := util.CachedMap3(apollo.ExportApolloVaultLPs, "./apollo.json", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range apolloLps {
 		finalMap[k] = v
 	}
-	marsLps, err := mars.ExportFieldOfMarsLpTokens(app)
+	marsLps, err := util.CachedMap3(mars.ExportFieldOfMarsLpTokens, "./mars-field.json", app)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range marsLps {
 		finalMap[k] = v
 	}
-	mirrorLps, err := mirror.ExportMirrorLpStakers(app)
+	mirrorLps, err := util.CachedMap3(mirror.ExportMirrorLpStakers, "./mirror.json", app)
 	if err != nil {
 		return nil, err
 	}
