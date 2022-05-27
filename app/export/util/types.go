@@ -45,7 +45,11 @@ func (s SnapshotBalanceAggregateMap) AppendOrAddBalance(addr string, newBalance 
 	for i, balance := range s[addr] {
 		if balance.Denom == newBalance.Denom {
 			if !newBalance.Balance.IsNil() {
-				s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
+				if s[addr][i].Balance.IsNil() {
+					s[addr][i].Balance = newBalance.Balance
+				} else {
+					s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
+				}
 				return
 			}
 		}
