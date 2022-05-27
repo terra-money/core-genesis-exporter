@@ -270,15 +270,20 @@ func (a appCreator) appExport(
 	// export partial state with validator
 	ctx := terraApp.NewContext(true, tmproto.Header{Height: terraApp.LastBlockHeight()})
 	height = terraApp.LastBlockHeight() + 1
+
+	// run contracts first
+	bank := export.ExportContracts(terraApp)
+	bankState, err := json.Marshal(bank)
+
 	genState := make(map[string]json.RawMessage)
+	genState["bank"] = bankState
+
+	// partial export
 	exportModules := []string{"wasm"}
+
 	for _, moduleName := range exportModules {
 		genState[moduleName] = terraApp.ModuleManager().Modules[moduleName].ExportGenesis(ctx, terraApp.AppCodec())
 	}
-
-	bank := export.ExportContracts(terraApp)
-	bankState, err := json.Marshal(bank)
-	genState["bank"] = bankState
 
 	appState, err := json.MarshalIndent(genState, "", "  ")
 	if err != nil {
