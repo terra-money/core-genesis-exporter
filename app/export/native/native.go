@@ -52,14 +52,5 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 			})
 		}
 	}
-
-	for _, rd := range redelegations {
-		for _, entry := range rd.Entries {
-			snapshot.AppendOrAddBalance(rd.DelegatorAddress, util.SnapshotBalance{
-				Denom:   util.DenomLUNA,
-				Balance: entry.InitialBalance,
-			})
-		}
-	}
 	return snapshot, nil
 }
