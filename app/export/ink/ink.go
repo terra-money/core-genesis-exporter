@@ -120,7 +120,7 @@ func ExportContract(
 
 func getAllDeposits(ctx context.Context, q wasmtypes.QueryServer) (map[string]sdk.Int, error) {
 	var getPlayers func(string) error
-	limit := 1000
+	limit := 500
 
 	deposits := make(map[string]sdk.Int)
 	getPlayers = func(startAddress string) error {
@@ -160,7 +160,7 @@ func getAllDeposits(ctx context.Context, q wasmtypes.QueryServer) (map[string]sd
 
 func getAllParties(ctx context.Context, q wasmtypes.QueryServer) ([]PartyInfo, error) {
 	var getParties func(startAfter int) error
-	limit := 100
+	limit := 80
 
 	var partyInfos []PartyInfo
 	var partyRes PartyRes
@@ -191,7 +191,7 @@ func getAllVaults(ctx context.Context, q wasmtypes.QueryServer) ([]Vault, error)
 	err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
 		ContractAddress: InkVault,
 		// there are only ~1053 (incl. empty vaults)
-		QueryMsg: []byte("{\"vault_deposits\": {\"limit\": 2000, \"include_zero_deposit\": false}}"),
+		QueryMsg: []byte("{\"vault_deposits\": {\"limit\": 1000, \"include_zero_deposit\": false}}"),
 	}, &vaultRes)
 	if err != nil {
 		return nil, err

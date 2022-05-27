@@ -110,11 +110,13 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "./radomearth.json", app, bl))
 	starTerraSs := checkWithSs(util.CachedSBA(starterra.ExportIDO, "./starterra.json", app, bl))
 	check(starterra.Audit(app, starTerraSs))
-	marsSs := checkWithSs(util.CachedSBA(mars.ExportContract, "mars.json", app, bl))
-	check(mars.Audit(app, marsSs))
 	starfletSs := checkWithSs(util.CachedSBA(starflet.ExportArbitrageAUST, "starflet.json", app, bl))
 	pylonSs := checkWithSs(util.CachedSBA(pylon.ExportContract, "./pylon.json", app, bl))
-	check(pylon.Audit(app, pylonSs))
+	marsSs := make(util.SnapshotBalanceAggregateMap)
+	if snapshotType == util.Snapshot(util.PreAttack) {
+		marsSs = checkWithSs(util.CachedSBA(mars.ExportContract, "mars.json", app, bl))
+		check(mars.Audit(app, marsSs))
+	}
 
 	// Export miscellaneous
 	flokiSs := checkWithSs(util.CachedSBA(terrafloki.ExportTerraFloki, "./floki.json", app, bl))
@@ -137,7 +139,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		staderStakeSs, staderVaultSs, angelSs,
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
-		steakSs, astroportLockDropSs, nexusSs,
+		steakSs, astroportLockDropSs, nexusSs, marsSs,
+		pylonSs,
 		// anchor
 		aUST,
 		bLunaInCustody,
