@@ -83,11 +83,10 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 
 	// read from previous export
 	data, err := os.ReadFile("./terraswap-lp.json")
-	if err != nil {
-		return nil, err
-	}
-	if err = json.Unmarshal(data, &lpHoldersMap); err != nil {
-		return nil, err
+	if err == nil {
+		if err = json.Unmarshal(data, &lpHoldersMap); err != nil {
+			return nil, err
+		}
 	}
 
 	if len(lpHoldersMap) == 0 {
