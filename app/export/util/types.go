@@ -138,3 +138,22 @@ func (s SnapshotBalanceAggregateMap) ApplyBlackList(bl Blacklist) {
 		}
 	}
 }
+
+func (s SnapshotBalanceAggregateMap) ExportToBalances() []types.Balance {
+	// merge just to make sure all balances are collapsed
+	merged := MergeSnapshots(s)
+
+	var export []types.Balance
+	for addr, balances := range merged {
+		account := types.Balance{
+			Address: addr,
+		}
+		for _, balance := range balances {
+			account.Coins = append(account.Coins, sdk.Coin{
+				Amount: balance.Balance,
+				Denom:  balance.Denom,
+			})
+		}
+	}
+	return export
+}

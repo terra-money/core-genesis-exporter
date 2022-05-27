@@ -89,7 +89,7 @@ func ExportContracts(app *terra.TerraApp) {
 	staderStakeSs := checkWithSs(stader.ExportStakePlus(app, bl))
 	staderVaultSs := checkWithSs(stader.ExportVaults(app, bl))
 	angelSs := checkWithSs(angel.ExportEndowments(app, bl))
-	randomEarthSs := checkWithSs(randomearth.ExportSettlements(app, bl))
+	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "./radomearth.json", app, bl))
 	starTerraSs := checkWithSs(starterra.ExportIDO(app, bl))
 	check(starterra.Audit(app, starTerraSs))
 	marsSs := checkWithSs(mars.ExportContract(app, bl))
@@ -114,6 +114,8 @@ func ExportContracts(app *terra.TerraApp) {
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
+
+	return snapshot.ExportToBalances()
 }
 
 func NewBlacklist() util.Blacklist {
