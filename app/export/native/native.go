@@ -56,16 +56,17 @@ func ExportAllBondedLuna(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap,
 func ExportAllNativeBalances(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)
-	balances := app.BankKeeper.GetAccountsBalances(types.UnwrapSDKContext(ctx))
-	for _, balance := range balances {
-		for _, coin := range balance.Coins {
-			if !coin.Amount.IsZero() {
-				snapshot.AppendOrAddBalance(balance.Address, util.SnapshotBalance{
+	app.BankKeeper.IterateAllBalances(types.UnwrapSDKContext(ctx),
+		func(addr types.AccAddress, coin types.Coin) (stop bool) {
+			if !coin.Amount.IsZero() && (coin.Denom == util.DenomUST || coin.Denom == util.DenomLUNA) {
+				snapshot.AppendOrAddBalance(addr.String(), util.SnapshotBalance{
 					Denom:   coin.Denom,
 					Balance: coin.Amount,
 				})
 			}
-		}
-	}
+
+			return false
+		})
+
 	return snapshot, nil
 }
