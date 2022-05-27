@@ -151,7 +151,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
 
-	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app))
+	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app, bl))
 	nativeBalances := checkWithSs(native.ExportAllNativeBalances(app))
 
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
