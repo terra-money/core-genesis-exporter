@@ -188,7 +188,9 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 
 			// add to final balance if anything
 			if len(userBalance) != 0 {
-				finalBalance[userAddr] = append(finalBalance[userAddr], userBalance...)
+				for _, bal := range userBalance {
+					finalBalance.AppendOrAddBalance(userAddr, bal)
+				}
 			}
 		}
 	}
