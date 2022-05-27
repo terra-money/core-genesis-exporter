@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/cosmos/cosmos-sdk/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -30,6 +31,15 @@ var (
 	DenomCLUNA  = "ucluna"
 	DenomPLUNA  = "upluna"
 	DenomLUNAX  = "ulunax"
+
+	AddressAUST   = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
+	AddressBLUNA  = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
+	AddressSTLUNA = "terra1yg3j2s986nyp5z7r2lvt0hx3r0lnd7kwvwwtsc"
+	AddressSTEAK  = "terra1rl4zyexjphwgx6v3ytyljkkc4mrje2pyznaclv"
+	AddressNLUNA  = "terra10f2mt82kjnkxqj2gepgwl637u2w4ue2z5nhz5j"
+	AddressCLUNA  = "terra13zaagrrrxj47qjwczsczujlvnnntde7fdt0mau"
+	AddressPLUNA  = "terra1tlgelulz9pdkhls6uglfn5lmxarx7f2gxtdzh2"
+	AddressLUNAX  = "terra17y9qkl8dfkeg4py7n0g5407emqnemc3yqk5rup"
 
 	AUST = "terra1hzh9vpxhsk8253se0vv5jj6etdvxu3nv8z07zu"
 )
@@ -82,9 +92,22 @@ func GetBalance(account string) json.RawMessage {
 	return []byte(fmt.Sprintf("{\"balance\":{\"address\":\"%s\"}}", account))
 }
 
+var timestampsPerBlock = map[int64]time.Time{
+	7544910: time.Unix(1651935577, 792),
+	7790000: time.Unix(1653583088, 146),
+
+	// test
+	7684654: time.Unix(1652926192, 483),
+}
+
 func PrepCtx(app *terra.TerraApp) context.Context {
 	height := app.LastBlockHeight()
-	ctx := app.NewContext(true, tmproto.Header{Height: height})
+	time, ok := timestampsPerBlock[height]
+	if !ok {
+		panic(fmt.Sprintf("Unknown target height %d", height))
+	}
+
+	ctx := app.NewContext(true, tmproto.Header{Height: height, Time: time})
 	return sdktypes.WrapSDKContext(ctx)
 }
 
@@ -166,7 +189,7 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 		return err
 	}
 
-	unmarshalErr := json.Unmarshal(response.QueryResult, res)
+	unmarshalErr := tmjson.Unmarshal(response.QueryResult, res)
 	if unmarshalErr != nil {
 		return unmarshalErr
 	}
