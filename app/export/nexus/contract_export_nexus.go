@@ -1,6 +1,7 @@
 package nexus
 
 import (
+	"context"
 	"fmt"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
@@ -66,31 +67,10 @@ func ExportNexus(app *terra.TerraApp, fromLP util.SnapshotBalanceAggregateMap, b
 	nLunaHoldingsFromLP := fromLP.PickDenomIntoBalanceMap(util.DenomNLUNA)
 	mergednLunaHolderMap := util.MergeMaps(nLunaHolderMap, nLunaHolderMapFlat, nLunaHoldingsFromLP)
 
-	// nLUNA -> bLUNA ratio
-	// get bLUNA held in collateral
-	var collaterals struct {
-		Collaterals [][2]string `json:"collaterals"`
+	nAssetTobAssetRatio, err := getnAssetTobAssetRatio(ctx, qs)
+	if err != nil {
+		return nil, err
 	}
-	if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: AddressAnchorOverseer,
-		QueryMsg:        []byte(fmt.Sprintf("{\"collaterals\":{\"borrower\":\"%s\"}}", AddressBLUNAVault)),
-	}, &collaterals); err != nil {
-		return nil, fmt.Errorf("failed to fetch Nexus bLUNA vault collateral: %v", err)
-	}
-
-	bLUNAProvision, _ := sdk.NewIntFromString(collaterals.Collaterals[0][1])
-
-	// calc nAsset->bAsset ratio
-	var nLunaSupply struct {
-		TotalSupply sdk.Int `json:"total_supply"`
-	}
-	if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: AddressNLUNA,
-		QueryMsg:        []byte("{\"token_info\":{}}"),
-	}, &nLunaSupply); err != nil {
-		return nil, fmt.Errorf("failed to fetch nLUNA total supply: %v", err)
-	}
-	nAssetTobAssetRatio := sdk.NewDecFromInt(bLUNAProvision).QuoInt(nLunaSupply.TotalSupply)
 
 	// iterate over merged nLUNA holder map, apply nLUNA -> bLUNA ratio
 	var finalBalance = make(util.SnapshotBalanceAggregateMap)
@@ -113,4 +93,56 @@ func ExportNexus(app *terra.TerraApp, fromLP util.SnapshotBalanceAggregateMap, b
 	}
 
 	return finalBalance, nil
+}
+
+func getnAssetTobAssetRatio(ctx context.Context, qs wasmtypes.QueryServer) (sdk.Dec, error) {
+	// nLUNA -> bLUNA ratio
+	// get bLUNA held in collateral
+	var collaterals struct {
+		Collaterals [][2]string `json:"collaterals"`
+	}
+	if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: AddressAnchorOverseer,
+		QueryMsg:        []byte(fmt.Sprintf("{\"collaterals\":{\"borrower\":\"%s\"}}", AddressBLUNAVault)),
+	}, &collaterals); err != nil {
+		return sdk.Dec{}, fmt.Errorf("failed to fetch Nexus bLUNA vault collateral: %v", err)
+	}
+
+	bLUNAProvision, _ := sdk.NewIntFromString(collaterals.Collaterals[0][1])
+
+	// calc nAsset->bAsset ratio
+	var nLunaSupply struct {
+		TotalSupply sdk.Int `json:"total_supply"`
+	}
+	if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: AddressNLUNA,
+		QueryMsg:        []byte("{\"token_info\":{}}"),
+	}, &nLunaSupply); err != nil {
+		return sdk.Dec{}, fmt.Errorf("failed to fetch nLUNA total supply: %v", err)
+	}
+	nAssetTobAssetRatio := sdk.NewDecFromInt(bLUNAProvision).QuoInt(nLunaSupply.TotalSupply)
+	return nAssetTobAssetRatio, nil
+}
+
+func ResolveToBLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) error {
+	ctx := util.PrepCtx(app)
+	qs := util.PrepWasmQueryServer(app)
+
+	nAssetTobAssetRatio, err := getnAssetTobAssetRatio(ctx, qs)
+	if err != nil {
+		return err
+	}
+
+	for _, sbs := range snapshot {
+		for i, sb := range sbs {
+			if sb.Denom == util.DenomNLUNA {
+				sbs[i] = util.SnapshotBalance{
+					Denom:   util.DenomBLUNA,
+					Balance: nAssetTobAssetRatio.MulInt(sb.Balance).TruncateInt(),
+				}
+			}
+		}
+	}
+
+	return nil
 }

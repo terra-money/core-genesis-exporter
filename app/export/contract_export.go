@@ -147,11 +147,13 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	)
 
 	// Export Liquid Staking
+	check(nexus.ResolveToBLuna(app, snapshot, bl))
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
 	check(lido.ExportLidoRewards(app, snapshot, bl))
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
 	check(prism.ResolveToLuna(app, snapshot, bl))
 	check(steak.ResolveSteakLuna(app, snapshot))
+	check(stader.ResolveToLuna(app, snapshot))
 
 	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app, bl))
 	nativeBalances := checkWithSs(native.ExportAllNativeBalances(app))
@@ -242,14 +244,14 @@ func finalAudit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, 
 	q := util.PrepWasmQueryServer(app)
 
 	// assert no other staking derivatives exist in the snapshot
-	// util.AssertZeroSupply(snapshot, util.AUST) // prevent accidental address as denom
-	// util.AssertZeroSupply(snapshot, util.DenomBLUNA)
-	// util.AssertZeroSupply(snapshot, util.DenomSTLUNA)
-	// util.AssertZeroSupply(snapshot, util.DenomSTEAK)
-	// util.AssertZeroSupply(snapshot, util.DenomNLUNA)
-	// util.AssertZeroSupply(snapshot, util.DenomCLUNA)
-	// util.AssertZeroSupply(snapshot, util.DenomPLUNA)
-	// util.AssertZeroSupply(snapshot, util.DenomLUNAX)
+	util.AssertZeroSupply(snapshot, util.AUST) // prevent accidental address as denom
+	util.AssertZeroSupply(snapshot, util.DenomBLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomSTLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomSTEAK)
+	util.AssertZeroSupply(snapshot, util.DenomNLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomCLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomPLUNA)
+	util.AssertZeroSupply(snapshot, util.DenomLUNAX)
 
 	if snapshotType == util.Snapshot(util.PreAttack) {
 		// expect to have aUST in the snapshot

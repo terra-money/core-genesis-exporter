@@ -103,7 +103,7 @@ func (s SnapshotBalanceAggregateMap) FilterByDenom(denom string) map[string]sdk.
 	filtered := make(map[string]sdk.Int)
 	for w, sbs := range s {
 		for _, sb := range sbs {
-			if sb.Denom == denom && sb.Balance.IsPositive() {
+			if sb.Denom == denom && !sb.Balance.IsNil() {
 				if filtered[w].IsNil() {
 					filtered[w] = sb.Balance
 				} else {
