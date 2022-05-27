@@ -371,9 +371,12 @@ func SaveDataToFile(file string, data interface{}) error {
 	return nil
 }
 
-func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, error), file string, app *terra.TerraApp, bl Blacklist) (SnapshotBalanceAggregateMap, error) {
-	if _, err := os.Stat(file); err == nil {
-		data, err := os.ReadFile(file)
+func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, error), filename string, app *terra.TerraApp, bl Blacklist) (SnapshotBalanceAggregateMap, error) {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	if _, err := os.Stat(path); err == nil {
+		data, err := os.ReadFile(path)
 		if err == nil {
 			var snapshot SnapshotBalanceAggregateMap
 			if err = json.Unmarshal(data, &snapshot); err == nil {
@@ -389,16 +392,19 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(file, out, 0666)
+	err = os.WriteFile(path, out, 0666)
 	if err != nil {
 		return nil, err
 	}
 	return snapshot, nil
 }
 
-func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), file string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
-	if _, err := os.Stat(file); err == nil {
-		data, err := os.ReadFile(file)
+func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), filename string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	if _, err := os.Stat(path); err == nil {
+		data, err := os.ReadFile(path)
 		if err == nil {
 			var snapshot map[string]map[string]map[string]sdk.Int
 			if err = json.Unmarshal(data, &snapshot); err == nil {
@@ -414,7 +420,7 @@ func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.In
 	if err != nil {
 		return nil, err
 	}
-	err = os.WriteFile(file, out, 0666)
+	err = os.WriteFile(path, out, 0666)
 	if err != nil {
 		return nil, err
 	}
