@@ -26,20 +26,9 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	var pairs = make(pairMap)
 	pairPrefix := util.GeneratePrefix("pair_info")
 	factory, _ := sdk.AccAddressFromBech32(AddressTerraswapFactory)
-	poolCount := 0
-
-	// Some pools are initiatialized with bad values
-	// Code panics when trying to get pool details
-	poolsToSkip := make(map[int]bool)
-	poolsToSkip[214] = true
-	poolsToSkip[215] = true
 
 	app.Logger().Info("... Retrieving all pools")
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), factory, pairPrefix, func(key, value []byte) bool {
-		poolCount += 1
-		if poolsToSkip[poolCount] {
-			return false
-		}
 		var pool pool
 		var pair pair
 		util.MustUnmarshalTMJSON(value, &pair)

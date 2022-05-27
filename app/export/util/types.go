@@ -44,8 +44,10 @@ func MergeSnapshots(ss ...SnapshotBalanceAggregateMap) (s3 SnapshotBalanceAggreg
 func (s SnapshotBalanceAggregateMap) AppendOrAddBalance(addr string, newBalance SnapshotBalance) {
 	for i, balance := range s[addr] {
 		if balance.Denom == newBalance.Denom {
-			s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
-			return
+			if !newBalance.Balance.IsNil() {
+				s[addr][i].Balance = s[addr][i].Balance.Add(newBalance.Balance)
+				return
+			}
 		}
 	}
 	s[addr] = append(s[addr], newBalance)
