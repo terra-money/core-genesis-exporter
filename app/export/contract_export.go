@@ -94,6 +94,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	} else {
 		apertureSs = checkWithSs(util.CachedSBA(aperture.ExportApertureVaultsPostAttack, "./aperture-post.json", app, bl))
 	}
+
 	edgeSs := checkWithSs(edge.ExportContract(app, bl))
 	check(edge.Audit(app, edgeSs))
 	mirrorSs := checkWithSs(util.CachedSBA(mirror.ExportMirrorCdps, "./mirror-cdp.json", app, bl))

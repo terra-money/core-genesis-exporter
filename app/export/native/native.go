@@ -61,10 +61,12 @@ func ExportAllNativeBalances(app *terra.TerraApp) (util.SnapshotBalanceAggregate
 	balances := app.BankKeeper.GetAccountsBalances(types.UnwrapSDKContext(ctx))
 	for _, balance := range balances {
 		for _, coin := range balance.Coins {
-			snapshot.AppendOrAddBalance(balance.Address, util.SnapshotBalance{
-				Denom:   coin.Denom,
-				Balance: coin.Amount,
-			})
+			if !coin.Amount.IsZero() {
+				snapshot.AppendOrAddBalance(balance.Address, util.SnapshotBalance{
+					Denom:   coin.Denom,
+					Balance: coin.Amount,
+				})
+			}
 		}
 	}
 	return snapshot, nil
