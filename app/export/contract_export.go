@@ -130,6 +130,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	steakSs := checkWithSs(util.CachedSBA(steak.ExportSteak, "steak", app, bl))
 	astroportLockDropSs := checkWithSs(util.CachedSBA(astroport.ExportAstroportLockdrop, "astroport-lockdrop", app, bl))
 	nexusSs, err := nexus.ExportNexus(app, astroportSnapshot, bl)
+	util.SaveToFile(app, nexusSs, "nexus")
 	check(err)
 
 	snapshot := util.MergeSnapshots(
@@ -151,12 +152,19 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	// Export Liquid Staking
 	check(nexus.ResolveToBLuna(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-nexus")
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "lido")
 	check(lido.ExportLidoRewards(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-lido-rewards")
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-lido")
 	check(prism.ResolveToLuna(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-prism")
 	check(steak.ResolveSteakLuna(app, snapshot))
+	util.SaveToFile(app, snapshot, "after-steak")
 	check(stader.ResolveToLuna(app, snapshot))
+	util.SaveToFile(app, snapshot, "after-stader")
 
 	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app, bl))
 	nativeBalances := checkWithSs(native.ExportAllNativeBalances(app))
