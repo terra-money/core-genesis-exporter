@@ -22,7 +22,7 @@ var (
 	EdgeProtocolTokens = []string{
 		util.AUST,
 		util.DenomLUNA,
-		util.DenomLUNA,
+		util.DenomUST,
 		lido.BLuna,
 		lido.StLuna,
 		stader.LunaX,
