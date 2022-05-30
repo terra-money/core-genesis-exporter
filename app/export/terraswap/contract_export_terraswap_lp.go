@@ -168,10 +168,13 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 	var finalBalance = make(util.SnapshotBalanceAggregateMap)
 	// for each pair LP token, get their token holding, calculate their holdings per pair
 	for pairAddr, pairInfo := range pairs {
-		lpAddr := pairInfo.LiquidityToken
+		lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
+		if err != nil {
+			panic(err)
+		}
 		pool := pools[pairAddr]
 
-		holderMap := lpHoldersMap[lpAddr]
+		holderMap := lpHoldersMap[lpAddr.String()]
 
 		// iterate over LP holders, calculate how much is to be refunded
 		for userAddr, lpBalance := range holderMap {
