@@ -427,6 +427,21 @@ func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.In
 	return snapshot, nil
 }
 
+func SaveToFile(app *terra.TerraApp, snapshot SnapshotBalanceAggregateMap, filename string) error {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path, out, 0666)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func AssertZeroSupply(snapshot SnapshotBalanceAggregateMap, denom string) {
 	s := Sum(snapshot.FilterByDenom(denom))
 	if !s.IsZero() {

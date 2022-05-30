@@ -74,8 +74,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	// Export DEXs
 	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
+	util.SaveToFile(app, astroportSnapshot, "astroport")
 	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
+	util.SaveToFile(app, terraswapSnapshot, "terraswap")
 	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "loop", app, bl))
+	util.SaveToFile(app, loopSnapshot, "loop")
 
 	// Export Vaults
 	suberraSs := checkWithSs(util.CachedSBA(suberra.ExportSuberra, "suberra", app, bl))
@@ -166,7 +169,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 			for i, b := range sbs {
 				if b.Denom == util.DenomAUST {
 					sbs[i] = util.SnapshotBalance{
-						Denom: util.DenomUST,
+						Denom:   util.DenomUST,
 						Balance: b.Balance,
 					}
 				}
@@ -175,9 +178,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	}
 
 	// remove all contract holdings from snapshot, minus some whitelisted ones
-	util.RemoveContractBalances(snapshot, contractMap)
+	// util.RemoveContractBalances(snapshot, contractMap)
 
-	finalAudit(app, snapshot, snapshotType)
+	// finalAudit(app, snapshot, snapshotType)
 
 	return snapshot.ExportToBalances()
 }
