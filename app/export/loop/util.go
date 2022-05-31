@@ -33,7 +33,7 @@ func isTargetPool(p *pool) bool {
 
 func pickDenomOrContractAddress(asset assetInfo) string {
 	if asset.Token != nil {
-		return sdk.AccAddress(asset.Token.ContractAddr).String()
+		return asset.Token.ContractAddr
 	}
 
 	if asset.NativeToken != nil {

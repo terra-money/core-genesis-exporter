@@ -41,7 +41,7 @@ type (
 
 	assetInfo struct {
 		Token *struct {
-			ContractAddr []byte `json:"contract_addr"`
+			ContractAddr string `json:"contract_addr"`
 		} `json:"token"`
 		NativeToken *struct {
 			Denom string `json:"denom"`
