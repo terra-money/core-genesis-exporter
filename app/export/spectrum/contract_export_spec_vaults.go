@@ -14,7 +14,9 @@ import (
 )
 
 var (
-	specFarms = []string{
+	nLunaFarm   = "terra16usjvptlpdrj7hcmy7mvdap5tttzcya7ch0can"
+	ustLunaFarm = "terra1egstlx9c9pq5taja5sg0yhraa0cl5laxyvm3ln"
+	specFarms   = []string{
 		//SPEC-UST
 		"terra17hjvrkcwn3jk2qf69s5ldxx5rjccchu35assga",
 		//stLuna-LUNA
@@ -100,7 +102,7 @@ type RewardInfo struct {
 //    a. For each holder, call contract query `reward_info` to find the bond_amount.
 //        i. For each pool, add the LP tokens to the resulting map
 // 3. Return list of LP ownship group by LP token address and wallet address
-func ExportSpecVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+func ExportSpecVaultLPs(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	app.Logger().Info("Exporting Specturm")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
@@ -116,7 +118,7 @@ func ExportSpecVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]s
 			return nil, err
 		}
 		holding := make(map[string]map[string]sdk.Int)
-		err = getSpecFarmRewards(ctx, app.WasmKeeper, q, farmAddr, pools, holding)
+		err = getSpecFarmRewards(ctx, app.WasmKeeper, q, farmAddr, pools, holding, snapshot)
 		holdings[farmAddrStr] = holding
 		if err != nil {
 			return nil, err
@@ -168,6 +170,7 @@ func getSpecFarmRewards(
 	farmAddr sdk.AccAddress,
 	poolInfo map[string]PoolInfo,
 	holdings map[string]map[string]sdk.Int,
+	snapshot util.SnapshotBalanceAggregateMap,
 ) error {
 
 	// Spec farm prefix format
@@ -186,13 +189,28 @@ func getSpecFarmRewards(
 			panic(err)
 		}
 		for _, reward := range rewards.RewardInfo {
-			lpAddr := poolInfo[reward.TokenAddr].LpTokenAddr
-			if holdings[lpAddr] == nil {
-				holdings[lpAddr] = make(map[string]sdk.Int)
+			if farmAddr.String() == nLunaFarm {
+				snapshot.AppendOrAddBalance(walletAddress.String(), util.SnapshotBalance{
+					Denom:   util.AddressNLUNA,
+					Balance: reward.LpAmount,
+				})
+			} else {
+				lpAddr := mapLpAddress(farmAddr.String(), poolInfo[reward.TokenAddr].LpTokenAddr)
+				if holdings[lpAddr] == nil {
+					holdings[lpAddr] = make(map[string]sdk.Int)
+				}
+				holdings[lpAddr][walletAddress.String()] = reward.LpAmount
 			}
-			holdings[lpAddr][walletAddress.String()] = reward.LpAmount
 		}
 		return false
 	})
 	return nil
+}
+
+func mapLpAddress(farmAddr string, tokenAddr string) string {
+	// UST-LUNA astroport
+	if farmAddr == ustLunaFarm {
+		return "terra1m6ywlgn6wrjuagcmmezzz2a029gtldhey5k552"
+	}
+	return tokenAddr
 }

@@ -19,7 +19,7 @@ var (
 )
 
 // returns staking_contract_addr -> lp_token -> user -> amount
-func ExportMirrorLpStakers(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+func ExportMirrorLpStakers(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	app.Logger().Info("Exporting Mirror LP Stakers")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)

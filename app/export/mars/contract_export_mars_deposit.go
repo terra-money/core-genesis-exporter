@@ -191,7 +191,7 @@ func ExportMarsSafetyFund(app *terra.TerraApp, bl util.Blacklist) (util.Snapshot
 // 2. List all positions recurrsively
 // 3. Find how much LP tokens are deposited at the astroport generator
 // 4. Split the LP based on bond_unit and create a holding map with format {farm: {"lp_token_addr": {"wallet_addr": "amount"}}}
-func ExportFieldOfMarsLpTokens(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+func ExportFieldOfMarsLpTokens(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	app.Logger().Info("Exporting Field of Mars")
 	q := util.PrepWasmQueryServer(app)
 	ctx := util.PrepCtx(app)
