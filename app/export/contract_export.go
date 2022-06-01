@@ -115,11 +115,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(starterra.Audit(app, starTerraSs))
 	starfletSs := checkWithSs(util.CachedSBA(starflet.ExportArbitrageAUST, "starflet", app, bl))
 	pylonSs := checkWithSs(util.CachedSBA(pylon.ExportContract, "pylon", app, bl))
-	marsSs := make(util.SnapshotBalanceAggregateMap)
-	if snapshotType == util.Snapshot(util.PreAttack) {
-		marsSs = checkWithSs(util.CachedSBA(mars.ExportContract, "mars", app, bl))
-		check(mars.Audit(app, marsSs))
-	}
+	marsSs := checkWithSs(util.CachedSBA(mars.ExportContract, "mars", app, bl))
+	check(mars.Audit(app, marsSs))
 
 	// Export miscellaneous
 	flokiSs := checkWithSs(util.CachedSBA(terrafloki.ExportTerraFloki, "floki", app, bl))
@@ -233,6 +230,14 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot, snapshot 
 	for k, v := range mirrorLps {
 		finalMap[k] = v
 	}
+	marsLps, err := util.CachedMap3(mars.ExportMarsAuctionLpHolders, "mars-auction", app, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range marsLps {
+		finalMap[k] = v
+	}
+
 	return finalMap, nil
 }
 

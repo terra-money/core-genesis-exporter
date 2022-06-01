@@ -132,7 +132,6 @@ func getSpecFarmPools(ctx context.Context, keeper keeper.Keeper, q wasmtypes.Que
 	// var stratConfig StrategyConfig
 	pools := make(map[string]PoolInfo)
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), farmAddr, prefix, func(key, value []byte) bool {
-		// fmt.Printf("%x, %s\n", key, value)
 		var pool PoolInfo
 		err := json.Unmarshal(value, &pool)
 		if err != nil {
