@@ -11,6 +11,7 @@ import (
 	slashingtypes "github.com/cosmos/cosmos-sdk/x/slashing/types"
 	"github.com/cosmos/cosmos-sdk/x/staking"
 	stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
+	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
 
 	oracletypes "github.com/terra-money/core/x/oracle/types"
 )
@@ -32,8 +33,9 @@ func (app *TerraApp) ExportAppStateAndValidators(
 	}
 
 	// wasm stuff
-	//wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
-	//exportAnchorDeposit(ctx, height, wasmQuerier)
+	wasmQuerier := wasmkeeper.NewQuerier(app.WasmKeeper)
+	// here edit
+	ExportStarTerra(app, wasmQuerier)
 
 	genState := app.mm.ExportGenesis(ctx, app.appCodec)
 	appState, err := json.MarshalIndent(genState, "", "  ")
