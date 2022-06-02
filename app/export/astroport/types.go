@@ -10,6 +10,8 @@ var (
 	AddressAstroportFactory  = "terra1fnywlw4edny3vw44x04xd67uzkdqluymgreu7g"
 	PylonStaking             = "terra19nek85kaqrvzlxygw20jhy08h3ryjf5kg4ep3l"
 	PylonLp                  = "terra16unvjel8vvtanxjpw49ehvga5qjlstn8c826qe"
+	AstroUstLp               = "terra17n5sunn88hpy965mzvt3079fqx3rttnplg779g"
+	AddressAstroportAuction  = "terra1tvld5k6pus2yh7pcu7xuwyjedn7mjxfkkkjjap"
 
 	AddressAUST   = anchor.AddressAUST
 	AddressBLUNA  = "terra1kc87mu460fwkqte29rquh4hc20m54fxwtsx7gp"
@@ -40,7 +42,8 @@ type (
 
 	// only care about migration info to figure out ts -> astro migrated
 	poolInfo struct {
-		MigrationInfo struct {
+		TerraswapAmountInLockup sdk.Int `json:"terraswap_amount_in_lockups"`
+		MigrationInfo           struct {
 			AstroportLPToken string `json:"astroport_lp_token"`
 		} `json:"migration_info"`
 	}

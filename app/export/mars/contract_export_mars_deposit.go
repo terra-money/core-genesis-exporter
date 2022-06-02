@@ -255,10 +255,11 @@ func ExportFieldOfMarsLpTokens(app *terra.TerraApp, snapshot util.SnapshotBalanc
 func ExportMarsAuctionLpHolders(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	app.Logger().Info("Exporting Mars auction holders")
 	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
 	prefix := util.GeneratePrefix("users")
 
 	marsLpMap := make(map[string]sdk.Int)
-
+	sum := sdk.ZeroInt()
 	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), util.ToAddress(marsAuction), prefix, func(key, value []byte) bool {
 		var userInfo struct {
 			LpTokenAmount sdk.Int `json:"lp_shares"`
@@ -269,9 +270,19 @@ func ExportMarsAuctionLpHolders(app *terra.TerraApp, snapshot util.SnapshotBalan
 		}
 		if !userInfo.LpTokenAmount.IsZero() {
 			marsLpMap[string(key)] = userInfo.LpTokenAmount
+			sum = sum.Add(userInfo.LpTokenAmount)
 		}
 		return false
 	})
+
+	astroportDesposit, err := getAstroportGeneratorDeposit(ctx, q, astroportGenerator, marsUstLp, marsAuction)
+	if err != nil {
+		return nil, err
+	}
+
+	for addr, balance := range marsLpMap {
+		marsLpMap[addr] = sdk.NewDecFromInt(balance).MulInt(astroportDesposit).QuoInt(sum).TruncateInt()
+	}
 
 	lpHolders := make(map[string]map[string]map[string]sdk.Int)
 	lpHolders[marsAuction] = make(map[string]map[string]sdk.Int)

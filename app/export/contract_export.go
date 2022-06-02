@@ -22,6 +22,7 @@ import (
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/pylon"
 	"github.com/terra-money/core/app/export/randomearth"
+	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/stader"
 	"github.com/terra-money/core/app/export/starflet"
 	"github.com/terra-money/core/app/export/starterra"
@@ -36,7 +37,6 @@ import (
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/mars"
 	"github.com/terra-money/core/app/export/mirror"
-	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/util"
 )
 
@@ -52,13 +52,6 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	bl := NewBlacklist()
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d - %s", app.LastBlockHeight(), snapshotType))
-
-	// a global holder for all contracts and their contractInfo
-	// Export generics
-	genericsSnapshot, _, err := generic.ExportGenericContracts(app, bl)
-	if err != nil {
-		panic(err)
-	}
 
 	// // Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
@@ -125,13 +118,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	aliceSs := checkWithSs(util.CachedSBA(alice.ExportAlice, "alice", app, bl))
 	kineticSs := checkWithSs(util.CachedSBA(kinetic.ExportKinetic, "kinetic", app, bl))
 	steakSs := checkWithSs(util.CachedSBA(steak.ExportSteak, "steak", app, bl))
-	astroportLockDropSs := checkWithSs(util.CachedSBA(astroport.ExportAstroportLockdrop, "astroport-lockdrop", app, bl))
 	nexusSs, err := nexus.ExportNexus(app, astroportSnapshot, bl)
 	util.SaveToFile(app, nexusSs, "nexus")
 	check(err)
 
 	snapshot := util.MergeSnapshots(
-		genericsSnapshot,
 		// DEX
 		astroportSnapshot, terraswapSnapshot, loopSnapshot,
 		suberraSs, whiteWhaleSs, kujiraSs, prismSs,
@@ -140,7 +131,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		staderStakeSs, staderVaultSs, angelSs,
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
-		steakSs, astroportLockDropSs, nexusSs, marsSs,
+		steakSs, nexusSs, marsSs,
 		pylonSs,
 		// anchor
 		aUST,
@@ -182,12 +173,19 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		}
 	}
 
+	// a global holder for all contracts and their contractInfo
+	// Export generics
+	finalSnapshot, _, err := generic.ExportGenericContracts(app, snapshot, bl)
+	if err != nil {
+		panic(err)
+	}
+
 	// remove all contract holdings from snapshot, minus some whitelisted ones
 	// util.RemoveContractBalances(snapshot, contractMap)
 
 	// finalAudit(app, snapshot, snapshotType)
 
-	return snapshot.ExportToBalances()
+	return finalSnapshot.ExportToBalances()
 }
 
 func NewBlacklist() util.Blacklist {
@@ -235,6 +233,13 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot, snapshot 
 		return nil, err
 	}
 	for k, v := range marsLps {
+		finalMap[k] = v
+	}
+	astroportLps, err := util.CachedMap3(astroport.ExportAstroportLockdrop, "astro-lockdrop", app, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range astroportLps {
 		finalMap[k] = v
 	}
 

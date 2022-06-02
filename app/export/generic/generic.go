@@ -9,7 +9,7 @@ import (
 	"github.com/terra-money/core/app/export/util"
 )
 
-func ExportGenericContracts(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, common.ContractsMap, error) {
+func ExportGenericContracts(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, common.ContractsMap, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 

@@ -194,7 +194,6 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(response.QueryResult, res)
 	if err != nil {
 		return err
