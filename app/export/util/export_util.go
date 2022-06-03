@@ -370,6 +370,34 @@ func SaveDataToFile(file string, data interface{}) error {
 	return nil
 }
 
+func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[string]sdk.Int) (SnapshotBalanceAggregateMap, error), filename string, app *terra.TerraApp, bl Blacklist, lpMap map[string]map[string]map[string]sdk.Int) (SnapshotBalanceAggregateMap, error) {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	if _, err := os.Stat(path); err == nil {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			var snapshot SnapshotBalanceAggregateMap
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	snapshot, err := f(app, bl, lpMap)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(path, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
+}
+
 func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, error), filename string, app *terra.TerraApp, bl Blacklist) (SnapshotBalanceAggregateMap, error) {
 	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
 	_ = os.Mkdir(folder, 0777)

@@ -66,12 +66,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(mirror.AuditCompounders(app, compoundedLps))
 
 	// Export DEXs
-	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
-	util.SaveToFile(app, astroportSnapshot, "astroport")
-	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
-	util.SaveToFile(app, terraswapSnapshot, "terraswap")
+	astroportSnapshot := checkWithSs(util.CachedDex(astroport.ExportAstroportLP, "astroport", app, bl, compoundedLps))
+	terraswapSnapshot := checkWithSs(util.CachedDex(terraswap.ExportTerraswapLiquidity, "terraswap", app, bl, compoundedLps))
 	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "loop", app, bl))
-	util.SaveToFile(app, loopSnapshot, "loop")
 
 	// Export Vaults
 	suberraSs := checkWithSs(util.CachedSBA(suberra.ExportSuberra, "suberra", app, bl))
@@ -154,8 +151,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(stader.ResolveToLuna(app, snapshot))
 	util.SaveToFile(app, snapshot, "after-stader")
 
-	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app, bl))
-	nativeBalances := checkWithSs(native.ExportAllNativeBalances(app))
+	bondedLuna := checkWithSs(util.CachedSBA(native.ExportAllBondedLuna, "bonded-luna", app, bl))
+	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
 
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
 	snapshot.ApplyBlackList(bl)
