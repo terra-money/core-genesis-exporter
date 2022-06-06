@@ -157,19 +157,6 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
 	snapshot.ApplyBlackList(bl)
 
-	if snapshotType == util.Snapshot(util.PostAttack) {
-		for _, sbs := range snapshot {
-			for i, b := range sbs {
-				if b.Denom == util.DenomAUST {
-					sbs[i] = util.SnapshotBalance{
-						Denom:   util.DenomUST,
-						Balance: b.Balance,
-					}
-				}
-			}
-		}
-	}
-
 	// a global holder for all contracts and their contractInfo
 	// Export generics
 	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
@@ -184,6 +171,19 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	}
 	util.SaveToFile(app, finalSnapshot, "final-snapshot")
 	util.SaveToFile(app, contractSnapshot, "contract-snapshot")
+
+	if snapshotType == util.Snapshot(util.PostAttack) {
+		for _, sbs := range finalSnapshot {
+			for i, b := range sbs {
+				if b.Denom == util.DenomAUST {
+					sbs[i] = util.SnapshotBalance{
+						Denom:   util.DenomUST,
+						Balance: b.Balance,
+					}
+				}
+			}
+		}
+	}
 
 	// remove all contract holdings from snapshot, minus some whitelisted ones
 	// util.RemoveContractBalances(snapshot, contractMap)
