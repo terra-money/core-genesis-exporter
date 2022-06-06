@@ -172,14 +172,13 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	// a global holder for all contracts and their contractInfo
 	// Export generics
-	cw3Snapshot, contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
+	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
 	if err != nil {
 		panic(err)
 	}
-	finalSnapshot := util.MergeSnapshots(snapshot, cw3Snapshot)
-	finalSnapshot.ApplyBlackList(bl)
+	snapshot.ApplyBlackList(bl)
 
-	finalSnapshot, contractSnapshot, err := native.SplitContractBalances(app, contractMap, finalSnapshot)
+	finalSnapshot, contractSnapshot, err := native.SplitContractBalances(app, contractMap, snapshot)
 	if err != nil {
 		panic(err)
 	}

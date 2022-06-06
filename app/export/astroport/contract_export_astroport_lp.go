@@ -138,6 +138,7 @@ func ExportAstroportLP(app *terra.TerraApp, bl util.Blacklist, contractLpHolders
 				if err != nil {
 					panic(err)
 				}
+				
 				for addr, amount := range userHoldings {
 					if lpHolding[addr].IsNil() {
 						lpHolding[addr] = amount

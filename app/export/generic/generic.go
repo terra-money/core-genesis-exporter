@@ -9,31 +9,32 @@ import (
 	"github.com/terra-money/core/app/export/util"
 )
 
-func ExportGenericContracts(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, common.ContractsMap, error) {
+func ExportGenericContracts(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) (common.ContractsMap, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
 	// iterate through all contracts...
 	contractsMap := make(common.ContractsMap)
 
-	logger.Info("[app/export/generic] getting all contract info...")
+	logger.Info("Getting all contract info...")
 	common.IterateAllContracts(sdk.UnwrapSDKContext(ctx), app.WasmKeeper, contractsMap)
-
-	var finalBalance = make(util.SnapshotBalanceAggregateMap)
 
 	// handle vesting
 	if vestingBalance, err := vesting.ExportVestingContracts(app, contractsMap, bl); err != nil {
-		return nil, nil, err
+		panic(err)
 	} else {
-		finalBalance = util.MergeSnapshots(finalBalance, vestingBalance)
+		// Merge vesting balance into snapshot
+		for w, sbs := range vestingBalance {
+			for _, b := range sbs {
+				snapshot.AppendOrAddBalance(w, b)
+			}
+		}
 	}
 
-	// handle cw3
-	if multisigBalance, err := cw3.ExportCW3(app, contractsMap, bl); err != nil {
-		return nil, nil, err
-	} else {
-		finalBalance = util.MergeSnapshots(finalBalance, multisigBalance)
+	// handle cw3, function directly updates the snapshot
+	if err := cw3.ExportCW3(app, contractsMap, snapshot, bl); err != nil {
+		panic(err)
 	}
 
-	return finalBalance, contractsMap, nil
+	return contractsMap, nil
 }
