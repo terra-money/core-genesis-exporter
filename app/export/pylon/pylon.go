@@ -7,6 +7,7 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/anchor"
 	util "github.com/terra-money/core/app/export/util"
 
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
@@ -168,66 +169,35 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanc
 	return snapshot, nil
 }
 
-func ExportContractOld(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
-	app.Logger().Info("Exporting Pylon")
-	var _ wasmtypes.QueryServer
-	ctx := util.PrepCtx(app)
-	q := util.PrepWasmQueryServer(app)
-
-	snapshot := make(util.SnapshotBalanceAggregateMap)
-
-	for _, pool := range PylonPools {
-		config, err := getConfig(ctx, q, app.BankKeeper, pool)
-		if err != nil {
-			return nil, err
-		}
-		totalSupply, err := util.GetCW20TotalSupply(ctx, q, config.PoolToken)
-		if err != nil {
-			return nil, err
-		}
-		tokenBalances := make(map[string]sdk.Int)
-		err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, config.PoolToken, tokenBalances)
-		if err != nil {
-			return nil, err
-		}
-
-		for w, a := range tokenBalances {
-			userUstAmount := a.Mul(config.UstAmount).Quo(totalSupply)
-			userAustAmount := a.Mul(config.AUstAmount).Quo(totalSupply)
-
-			if !userUstAmount.IsZero() {
-				snapshot.AppendOrAddBalance(w, util.SnapshotBalance{Denom: util.DenomUST, Balance: userUstAmount})
-			}
-			if !userAustAmount.IsZero() {
-				snapshot.AppendOrAddBalance(w, util.SnapshotBalance{Denom: util.DenomAUST, Balance: userAustAmount})
-			}
-		}
-	}
-
-	return snapshot, nil
-}
-
 func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
 	app.Logger().Info("Audit -- Pylon")
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
-	sumAUst := sdk.NewInt(0)
-	sumUst := sdk.NewInt(0)
+	totalUst := sdk.NewInt(0)
+
+	// get aUST<>UST rate
+	var epochStateResponse struct {
+		ExchangeRate sdk.Dec `json:"exchange_rate"`
+	}
+
+	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: anchor.MoneyMarketContract,
+		QueryMsg:        []byte(fmt.Sprintf("{\"epoch_state\":{\"block_height\":%d}}", app.LastBlockHeight())),
+	}, &epochStateResponse); err != nil {
+		return err
+	}
 
 	for _, pool := range PylonPools {
 		config, err := getConfig(ctx, q, app.BankKeeper, pool)
 		if err != nil {
 			return err
 		}
-		sumAUst = sumAUst.Add(config.AUstAmount)
-		sumUst = sumUst.Add(config.UstAmount)
+
+		totalUst = totalUst.Add(config.UstAmount).Add(config.AUstAmount.ToDec().MulTruncate(epochStateResponse.ExchangeRate).TruncateInt())
 	}
 
-	if err := util.AlmostEqual(util.AUST, sumAUst, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(1000000)); err != nil {
-		return err
-	}
-	if err := util.AlmostEqual(util.DenomUST, sumUst, snapshot.SumOfDenom(util.DenomUST), sdk.NewInt(1000000)); err != nil {
+	if err := util.AlmostEqual(util.DenomUST, totalUst, snapshot.SumOfDenom(util.DenomUST), sdk.NewInt(100000000000)); err != nil {
 		return err
 	}
 
