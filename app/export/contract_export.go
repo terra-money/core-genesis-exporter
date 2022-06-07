@@ -144,32 +144,31 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		panic(err)
 	}
 
-	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances, vestingSs)
-	snapshot.ApplyBlackList(bl)
+	finalSnapshot := util.MergeSnapshots(snapshot, bondedLuna, nativeBalances, vestingSs)
+	finalSnapshot.ApplyBlackList(bl)
 
-	util.SaveToFile(app, snapshot, "after-protocols")
+	util.SaveToFile(app, finalSnapshot, "after-protocols")
 
 	// Export Liquid Staking
-	check(nexus.ResolveToBLuna(app, snapshot, bl))
-	util.SaveToFile(app, snapshot, "after-nexus")
-	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
-	util.SaveToFile(app, snapshot, "lido")
-	check(lido.ExportLidoRewards(app, snapshot, bl))
-	util.SaveToFile(app, snapshot, "after-lido-rewards")
-	check(lido.ResolveLidoLuna(app, snapshot, bl))
-	util.SaveToFile(app, snapshot, "after-lido")
-	check(prism.ResolveToLuna(app, snapshot, bl))
-	util.SaveToFile(app, snapshot, "after-prism")
-	check(steak.ResolveSteakLuna(app, snapshot))
-	util.SaveToFile(app, snapshot, "after-steak")
-	check(stader.ResolveToLuna(app, snapshot))
-	util.SaveToFile(app, snapshot, "after-stader")
+	check(nexus.ResolveToBLuna(app, finalSnapshot, bl))
+	util.SaveToFile(app, finalSnapshot, "after-nexus")
+	check(lido.ExportBSTLunaHolders(app, finalSnapshot, bl))
+	util.SaveToFile(app, finalSnapshot, "lido")
+	check(lido.ExportLidoRewards(app, finalSnapshot, bl))
+	util.SaveToFile(app, finalSnapshot, "after-lido-rewards")
+	check(lido.ResolveLidoLuna(app, finalSnapshot, bl))
+	util.SaveToFile(app, finalSnapshot, "after-lido")
+	check(prism.ResolveToLuna(app, finalSnapshot, bl))
+	util.SaveToFile(app, finalSnapshot, "after-prism")
+	check(steak.ResolveSteakLuna(app, finalSnapshot))
+	util.SaveToFile(app, finalSnapshot, "after-steak")
+	check(stader.ResolveToLuna(app, finalSnapshot))
+	util.SaveToFile(app, finalSnapshot, "after-stader")
 
-	generic.HandleContractBalances(app, snapshot, contractMap, bl)
-	util.SaveToFile(app, snapshot, "after-contracts")
+	generic.HandleContractBalances(app, finalSnapshot, contractMap, bl)
 
 	if snapshotType == util.Snapshot(util.PostAttack) {
-		for _, sbs := range snapshot {
+		for _, sbs := range finalSnapshot {
 			for i, b := range sbs {
 				if b.Denom == util.DenomAUST {
 					sbs[i] = util.SnapshotBalance{
@@ -180,13 +179,14 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 			}
 		}
 	}
+	util.SaveToFile(app, finalSnapshot, "before-remove-contracts")
 
 	// remove all contract holdings from snapshot, minus some whitelisted ones
-	util.RemoveContractBalances(snapshot, contractMap)
+	util.RemoveContractBalances(finalSnapshot, contractMap)
 
-	finalAudit(app, snapshot, snapshotType)
+	finalAudit(app, finalSnapshot, snapshotType)
 
-	return snapshot.ExportToBalances()
+	return finalSnapshot.ExportToBalances()
 }
 
 func NewBlacklist() util.Blacklist {
