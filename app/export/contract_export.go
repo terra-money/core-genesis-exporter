@@ -165,6 +165,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(stader.ResolveToLuna(app, finalSnapshot))
 	util.SaveToFile(app, finalSnapshot, "after-stader")
 
+	// Collapse all balances
+	finalSnapshot = util.MergeSnapshots(make(util.SnapshotBalanceAggregateMap), finalSnapshot)
 	generic.HandleContractBalances(app, finalSnapshot, contractMap, bl)
 
 	if snapshotType == util.Snapshot(util.PostAttack) {

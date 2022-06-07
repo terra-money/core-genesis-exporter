@@ -134,6 +134,6 @@ func mapKnownContracts(snapshot util.SnapshotBalanceAggregateMap) {
 		for _, b := range snapshot[cAdd] {
 			snapshot.AppendOrAddBalance(rAdd, b)
 		}
+		delete(snapshot, cAdd)
 	}
-	delete(snapshot, cAdd)
 }
