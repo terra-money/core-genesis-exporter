@@ -188,9 +188,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	}
 
 	// remove all contract holdings from snapshot, minus some whitelisted ones
-	// util.RemoveContractBalances(snapshot, contractMap)
+	util.RemoveContractBalances(finalSnapshot, contractMap)
 
-	finalAudit(app, snapshot, snapshotType)
+	finalAudit(app, finalSnapshot, snapshotType)
 
 	return finalSnapshot.ExportToBalances()
 }
