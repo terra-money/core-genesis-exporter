@@ -129,8 +129,6 @@ func mapKnownContracts(snapshot util.SnapshotBalanceAggregateMap) {
 		add, err = sdk.AccAddressFromBech32(adds[1])
 		if err == nil {
 			rAdd = add.String()
-		} else {
-			fmt.Println(adds[1])
 		}
 	}
 	for _, b := range snapshot[cAdd] {
