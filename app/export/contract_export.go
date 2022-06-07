@@ -135,6 +135,20 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		bLunaInCustody,
 	)
 
+	bondedLuna := checkWithSs(util.CachedSBA(native.ExportAllBondedLuna, "bonded-luna", app, bl))
+	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
+
+	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
+	snapshot.ApplyBlackList(bl)
+
+	// a global holder for all contracts and their contractInfo
+	// Export generics
+	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
+	if err != nil {
+		panic(err)
+	}
+	snapshot.ApplyBlackList(bl)
+
 	// Export Liquid Staking
 	check(nexus.ResolveToBLuna(app, snapshot, bl))
 	util.SaveToFile(app, snapshot, "after-nexus")
@@ -150,20 +164,6 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	util.SaveToFile(app, snapshot, "after-steak")
 	check(stader.ResolveToLuna(app, snapshot))
 	util.SaveToFile(app, snapshot, "after-stader")
-
-	bondedLuna := checkWithSs(util.CachedSBA(native.ExportAllBondedLuna, "bonded-luna", app, bl))
-	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
-
-	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
-	snapshot.ApplyBlackList(bl)
-
-	// a global holder for all contracts and their contractInfo
-	// Export generics
-	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
-	if err != nil {
-		panic(err)
-	}
-	snapshot.ApplyBlackList(bl)
 
 	finalSnapshot, contractSnapshot, err := native.SplitContractBalances(app, contractMap, snapshot)
 	if err != nil {
