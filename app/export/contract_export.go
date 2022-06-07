@@ -143,6 +143,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
 	snapshot.ApplyBlackList(bl)
 
+	util.SaveToFile(app, snapshot, "after-protocols")
+
 	// a global holder for all contracts and their contractInfo
 	// Export generics
 	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
