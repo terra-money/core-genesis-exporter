@@ -7,6 +7,7 @@ import (
 	"github.com/terra-money/core/app/export/anchor"
 	"github.com/terra-money/core/app/export/angel"
 	"github.com/terra-money/core/app/export/aperture"
+	"github.com/terra-money/core/app/export/apollo"
 	"github.com/terra-money/core/app/export/astroport"
 	"github.com/terra-money/core/app/export/edge"
 	"github.com/terra-money/core/app/export/generic"
@@ -21,6 +22,7 @@ import (
 	"github.com/terra-money/core/app/export/prism"
 	"github.com/terra-money/core/app/export/pylon"
 	"github.com/terra-money/core/app/export/randomearth"
+	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/stader"
 	"github.com/terra-money/core/app/export/starflet"
 	"github.com/terra-money/core/app/export/starterra"
@@ -33,10 +35,8 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/x/bank/types"
 	terra "github.com/terra-money/core/app"
-	"github.com/terra-money/core/app/export/apollo"
 	"github.com/terra-money/core/app/export/mars"
 	"github.com/terra-money/core/app/export/mirror"
-	"github.com/terra-money/core/app/export/spectrum"
 	"github.com/terra-money/core/app/export/util"
 )
 
@@ -53,28 +53,21 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d - %s", app.LastBlockHeight(), snapshotType))
 
-	// a global holder for all contracts and their contractInfo
-	// Export generics
-	genericsSnapshot, contractMap, err := generic.ExportGenericContracts(app, bl)
-	if err != nil {
-		panic(err)
-	}
-
 	// // Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
 	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "anchor-bluna", app, bl))
 
+	singleStakingSnapshot := make(util.SnapshotBalanceAggregateMap)
 	// Export Compounders
-	compoundedLps, err := exportCompounders(app, snapshotType)
+	compoundedLps, err := exportCompounders(app, snapshotType, singleStakingSnapshot)
 	if err != nil {
 		panic(err)
 	}
-
 	check(mirror.AuditCompounders(app, compoundedLps))
 
 	// Export DEXs
-	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
-	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
+	astroportSnapshot := checkWithSs(util.CachedDex(astroport.ExportAstroportLP, "astroport", app, bl, compoundedLps))
+	terraswapSnapshot := checkWithSs(util.CachedDex(terraswap.ExportTerraswapLiquidity, "terraswap", app, bl, compoundedLps))
 	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "loop", app, bl))
 
 	// Export Vaults
@@ -112,11 +105,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(starterra.Audit(app, starTerraSs))
 	starfletSs := checkWithSs(util.CachedSBA(starflet.ExportArbitrageAUST, "starflet", app, bl))
 	pylonSs := checkWithSs(util.CachedSBA(pylon.ExportContract, "pylon", app, bl))
-	marsSs := make(util.SnapshotBalanceAggregateMap)
-	if snapshotType == util.Snapshot(util.PreAttack) {
-		marsSs = checkWithSs(util.CachedSBA(mars.ExportContract, "mars", app, bl))
-		check(mars.Audit(app, marsSs))
-	}
+	marsSs := checkWithSs(util.CachedSBA(mars.ExportContract, "mars", app, bl))
+	check(mars.Audit(app, marsSs))
 
 	// Export miscellaneous
 	flokiSs := checkWithSs(util.CachedSBA(terrafloki.ExportTerraFloki, "floki", app, bl))
@@ -125,12 +115,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	aliceSs := checkWithSs(util.CachedSBA(alice.ExportAlice, "alice", app, bl))
 	kineticSs := checkWithSs(util.CachedSBA(kinetic.ExportKinetic, "kinetic", app, bl))
 	steakSs := checkWithSs(util.CachedSBA(steak.ExportSteak, "steak", app, bl))
-	astroportLockDropSs := checkWithSs(util.CachedSBA(astroport.ExportAstroportLockdrop, "astroport-lockdrop", app, bl))
 	nexusSs, err := nexus.ExportNexus(app, astroportSnapshot, bl)
+	util.SaveToFile(app, nexusSs, "nexus")
 	check(err)
 
 	snapshot := util.MergeSnapshots(
-		genericsSnapshot,
 		// DEX
 		astroportSnapshot, terraswapSnapshot, loopSnapshot,
 		suberraSs, whiteWhaleSs, kujiraSs, prismSs,
@@ -139,7 +128,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		staderStakeSs, staderVaultSs, angelSs,
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
-		steakSs, astroportLockDropSs, nexusSs, marsSs,
+		steakSs, nexusSs, marsSs,
 		pylonSs,
 		// anchor
 		aUST,
@@ -148,25 +137,47 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	// Export Liquid Staking
 	check(nexus.ResolveToBLuna(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-nexus")
 	check(lido.ExportBSTLunaHolders(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "lido")
 	check(lido.ExportLidoRewards(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-lido-rewards")
 	check(lido.ResolveLidoLuna(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-lido")
 	check(prism.ResolveToLuna(app, snapshot, bl))
+	util.SaveToFile(app, snapshot, "after-prism")
 	check(steak.ResolveSteakLuna(app, snapshot))
+	util.SaveToFile(app, snapshot, "after-steak")
 	check(stader.ResolveToLuna(app, snapshot))
+	util.SaveToFile(app, snapshot, "after-stader")
 
-	bondedLuna := checkWithSs(native.ExportAllBondedLuna(app, bl))
-	nativeBalances := checkWithSs(native.ExportAllNativeBalances(app))
+	bondedLuna := checkWithSs(util.CachedSBA(native.ExportAllBondedLuna, "bonded-luna", app, bl))
+	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
 
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
 	snapshot.ApplyBlackList(bl)
 
+	// a global holder for all contracts and their contractInfo
+	// Export generics
+	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
+	if err != nil {
+		panic(err)
+	}
+	snapshot.ApplyBlackList(bl)
+
+	finalSnapshot, contractSnapshot, err := native.SplitContractBalances(app, contractMap, snapshot)
+	if err != nil {
+		panic(err)
+	}
+	util.SaveToFile(app, finalSnapshot, "final-snapshot")
+	util.SaveToFile(app, contractSnapshot, "contract-snapshot")
+
 	if snapshotType == util.Snapshot(util.PostAttack) {
-		for _, sbs := range snapshot {
+		for _, sbs := range finalSnapshot {
 			for i, b := range sbs {
 				if b.Denom == util.DenomAUST {
 					sbs[i] = util.SnapshotBalance{
-						Denom: util.DenomUST,
+						Denom:   util.DenomUST,
 						Balance: b.Balance,
 					}
 				}
@@ -175,11 +186,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	}
 
 	// remove all contract holdings from snapshot, minus some whitelisted ones
-	util.RemoveContractBalances(snapshot, contractMap)
+	// util.RemoveContractBalances(snapshot, contractMap)
 
-	finalAudit(app, snapshot, snapshotType)
+	// finalAudit(app, snapshot, snapshotType)
 
-	return snapshot.ExportToBalances()
+	return finalSnapshot.ExportToBalances()
 }
 
 func NewBlacklist() util.Blacklist {
@@ -190,16 +201,16 @@ func NewBlacklist() util.Blacklist {
 	}
 }
 
-func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot) (map[string]map[string]map[string]sdk.Int, error) {
+func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	finalMap := make(map[string]map[string]map[string]sdk.Int)
-	specLps, err := util.CachedMap3(spectrum.ExportSpecVaultLPs, "spectrum", app)
+	specLps, err := util.CachedMap3(spectrum.ExportSpecVaultLPs, "spectrum", app, snapshot)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range specLps {
 		finalMap[k] = v
 	}
-	apolloLps, err := util.CachedMap3(apollo.ExportApolloVaultLPs, "apollo", app)
+	apolloLps, err := util.CachedMap3(apollo.ExportApolloVaultLPs, "apollo", app, snapshot)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +218,7 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot) (map[stri
 		finalMap[k] = v
 	}
 	if snaphotType == util.Snapshot(util.PreAttack) {
-		marsLps, err := util.CachedMap3(mars.ExportFieldOfMarsLpTokens, "mars-field", app)
+		marsLps, err := util.CachedMap3(mars.ExportFieldOfMarsLpTokens, "mars-field", app, snapshot)
 		if err != nil {
 			return nil, err
 		}
@@ -215,13 +226,28 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot) (map[stri
 			finalMap[k] = v
 		}
 	}
-	mirrorLps, err := util.CachedMap3(mirror.ExportMirrorLpStakers, "mirror", app)
+	mirrorLps, err := util.CachedMap3(mirror.ExportMirrorLpStakers, "mirror", app, snapshot)
 	if err != nil {
 		return nil, err
 	}
 	for k, v := range mirrorLps {
 		finalMap[k] = v
 	}
+	marsLps, err := util.CachedMap3(mars.ExportMarsAuctionLpHolders, "mars-auction", app, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range marsLps {
+		finalMap[k] = v
+	}
+	astroportLps, err := util.CachedMap3(astroport.ExportAstroportLockdrop, "astro-lockdrop", app, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range astroportLps {
+		finalMap[k] = v
+	}
+
 	return finalMap, nil
 }
 

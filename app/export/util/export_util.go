@@ -194,7 +194,6 @@ func ContractQuery(ctx context.Context, q wasmtypes.QueryServer, req *wasmtypes.
 	if err != nil {
 		return err
 	}
-
 	err = json.Unmarshal(response.QueryResult, res)
 	if err != nil {
 		return err
@@ -371,6 +370,34 @@ func SaveDataToFile(file string, data interface{}) error {
 	return nil
 }
 
+func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[string]sdk.Int) (SnapshotBalanceAggregateMap, error), filename string, app *terra.TerraApp, bl Blacklist, lpMap map[string]map[string]map[string]sdk.Int) (SnapshotBalanceAggregateMap, error) {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	if _, err := os.Stat(path); err == nil {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			var snapshot SnapshotBalanceAggregateMap
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	snapshot, err := f(app, bl, lpMap)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(path, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return snapshot, nil
+}
+
 func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, error), filename string, app *terra.TerraApp, bl Blacklist) (SnapshotBalanceAggregateMap, error) {
 	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
 	_ = os.Mkdir(folder, 0777)
@@ -399,24 +426,32 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	return snapshot, nil
 }
 
-func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), filename string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+func CachedMap3(f func(*terra.TerraApp, SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error), filename string, app *terra.TerraApp, snapshot SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
 	_ = os.Mkdir(folder, 0777)
 	path := fmt.Sprintf("%s/%s", folder, filename)
+	ssPath := fmt.Sprintf("%s-snapshot", path)
 	if _, err := os.Stat(path); err == nil {
+		ssData, err := os.ReadFile(ssPath)
+		if err == nil {
+			var ss SnapshotBalanceAggregateMap
+			if err = json.Unmarshal(ssData, &ss); err != nil {
+				panic(err)
+			}
+		}
 		data, err := os.ReadFile(path)
 		if err == nil {
-			var snapshot map[string]map[string]map[string]sdk.Int
-			if err = json.Unmarshal(data, &snapshot); err == nil {
-				return snapshot, nil
+			var lpHolding map[string]map[string]map[string]sdk.Int
+			if err = json.Unmarshal(data, &lpHolding); err == nil {
+				return lpHolding, nil
 			}
 		}
 	}
-	snapshot, err := f(app)
+	lpHolding, err := f(app, snapshot)
 	if err != nil {
 		return nil, err
 	}
-	out, err := json.Marshal(snapshot)
+	out, err := json.Marshal(lpHolding)
 	if err != nil {
 		return nil, err
 	}
@@ -424,7 +459,30 @@ func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.In
 	if err != nil {
 		return nil, err
 	}
-	return snapshot, nil
+	ssOut, err := json.Marshal(snapshot)
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(ssPath, ssOut, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return lpHolding, nil
+}
+
+func SaveToFile(app *terra.TerraApp, snapshot SnapshotBalanceAggregateMap, filename string) error {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	out, err := json.Marshal(snapshot)
+	if err != nil {
+		return err
+	}
+	err = os.WriteFile(path, out, 0666)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func AssertZeroSupply(snapshot SnapshotBalanceAggregateMap, denom string) {

@@ -2,11 +2,13 @@ package mars
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	terra "github.com/terra-money/core/app"
 	util "github.com/terra-money/core/app/export/util"
+	"github.com/terra-money/core/x/wasm/keeper"
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
 )
 
@@ -25,6 +27,9 @@ var (
 		"terra12dq4wmfcsnz6ycep6ek4umtuaj6luhfp256hyu",
 	}
 	astroportGenerator = "terra1zgrx9jjqrfye8swykfgmd6hpde60j0nszzupp9"
+	marsLockDrop       = "terra1n38982txtv2yygtcfv3e9wp2ktmjyxl6z88rma"
+	marsAuction        = "terra1hgyamk2kcy3stqx82wrnsklw9aq7rask5dxfds"
+	marsUstLp          = "terra1ww6sqvfgmktp0afcmvg78st6z89x5zr3tmvpss"
 )
 
 // To prevent double counting, snapshot only assign depositors what is left in the 'bank'
@@ -124,21 +129,12 @@ func ExportMarsDepositUST(app *terra.TerraApp, bl util.Blacklist) (util.Snapshot
 	q := util.PrepWasmQueryServer(app)
 	logger := app.Logger()
 
+	lockedHolders, _ := getLockedMaUst(ctx, app.WasmKeeper)
+
 	var balances = make(util.BalanceMap)
 	logger.Info("fetching MARS liquidity (UST)...")
 
 	if err := util.GetCW20AccountsAndBalances(ctx, app.WasmKeeper, maUstToken, balances); err != nil {
-		return nil, err
-	}
-
-	// get luna liquidity <> luna er
-	var lunaMarketState struct {
-		LiquidityIndex sdk.Dec `json:"liquidity_index"`
-	}
-	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: marsMarket,
-		QueryMsg:        []byte("{\"market\": {\"asset\": {\"native\": {\"denom\": \"uusd\"}}}}"),
-	}, &lunaMarketState); err != nil {
 		return nil, err
 	}
 
@@ -150,6 +146,25 @@ func ExportMarsDepositUST(app *terra.TerraApp, bl util.Blacklist) (util.Snapshot
 	if err != nil {
 		return nil, err
 	}
+
+	// Resolve UST holders that were in the lock drop
+	totalShares := util.Sum(lockedHolders)
+	rate := sdk.NewDecFromInt(balances[marsLockDrop]).QuoInt(totalShares)
+	for addr, balance := range lockedHolders {
+		if balances[addr].IsNil() {
+			balances[addr] = rate.MulInt(balance).TruncateInt()
+		} else {
+			balances[addr] = balances[addr].Add(rate.MulInt(balance).TruncateInt())
+		}
+	}
+	delete(balances, marsLockDrop)
+
+	err = util.AlmostEqual("mars aUST", util.Sum(balances), totalSupply, sdk.NewInt(10000))
+	if err != nil {
+		panic(err)
+	}
+
+	// Split the remaining funds in the bank
 	sum := sdk.NewInt(0)
 	for address, balance := range balances {
 		if balance.IsZero() {
@@ -164,6 +179,23 @@ func ExportMarsDepositUST(app *terra.TerraApp, bl util.Blacklist) (util.Snapshot
 	bl.RegisterAddress(util.DenomUST, marsMarket)
 	snapshot.Add(balances, util.DenomUST)
 	return snapshot, nil
+}
+
+func getLockedMaUst(ctx context.Context, k keeper.Keeper) (map[string]sdk.Int, error) {
+	prefix := util.GeneratePrefix("users")
+	holders := make(map[string]sdk.Int)
+	k.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), util.ToAddress(marsLockDrop), prefix, func(key, value []byte) bool {
+		var userInfo struct {
+			TotalMaUstShare sdk.Int `json:"total_maust_share"`
+		}
+		err := json.Unmarshal(value, &userInfo)
+		if err != nil {
+			panic(err)
+		}
+		holders[string(key)] = userInfo.TotalMaUstShare
+		return false
+	})
+	return holders, nil
 }
 
 func ExportMarsSafetyFund(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
@@ -191,7 +223,7 @@ func ExportMarsSafetyFund(app *terra.TerraApp, bl util.Blacklist) (util.Snapshot
 // 2. List all positions recurrsively
 // 3. Find how much LP tokens are deposited at the astroport generator
 // 4. Split the LP based on bond_unit and create a holding map with format {farm: {"lp_token_addr": {"wallet_addr": "amount"}}}
-func ExportFieldOfMarsLpTokens(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+func ExportFieldOfMarsLpTokens(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	app.Logger().Info("Exporting Field of Mars")
 	q := util.PrepWasmQueryServer(app)
 	ctx := util.PrepCtx(app)
@@ -218,6 +250,44 @@ func ExportFieldOfMarsLpTokens(app *terra.TerraApp) (map[string]map[string]map[s
 		}
 	}
 	return holdings, nil
+}
+
+func ExportMarsAuctionLpHolders(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
+	app.Logger().Info("Exporting Mars auction holders")
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	prefix := util.GeneratePrefix("users")
+
+	marsLpMap := make(map[string]sdk.Int)
+	sum := sdk.ZeroInt()
+	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), util.ToAddress(marsAuction), prefix, func(key, value []byte) bool {
+		var userInfo struct {
+			LpTokenAmount sdk.Int `json:"lp_shares"`
+		}
+		err := json.Unmarshal(value, &userInfo)
+		if err != nil {
+			panic(err)
+		}
+		if !userInfo.LpTokenAmount.IsZero() {
+			marsLpMap[string(key)] = userInfo.LpTokenAmount
+			sum = sum.Add(userInfo.LpTokenAmount)
+		}
+		return false
+	})
+
+	astroportDesposit, err := getAstroportGeneratorDeposit(ctx, q, astroportGenerator, marsUstLp, marsAuction)
+	if err != nil {
+		return nil, err
+	}
+
+	for addr, balance := range marsLpMap {
+		marsLpMap[addr] = sdk.NewDecFromInt(balance).MulInt(astroportDesposit).QuoInt(sum).TruncateInt()
+	}
+
+	lpHolders := make(map[string]map[string]map[string]sdk.Int)
+	lpHolders[marsAuction] = make(map[string]map[string]sdk.Int)
+	lpHolders[marsAuction][marsUstLp] = marsLpMap
+	return lpHolders, nil
 }
 
 func auditAstroportLpBalances(ctx context.Context, q wasmtypes.QueryServer, astroportGenerator string, lpToken string, holdings map[string]sdk.Int, vaultAddr string) error {

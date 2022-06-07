@@ -6,6 +6,11 @@ import (
 	"github.com/terra-money/core/x/wasm/types"
 )
 
+var (
+	TreasuryMap = [][]string{
+	}
+)
+
 func IterateAllContracts(ctx sdk.Context, keeper wasmkeeper.Keeper, contractsInfo map[string]types.ContractInfo) {
 	keeper.IterateContractInfo(ctx, func(info types.ContractInfo) bool {
 		contractsInfo[info.Address] = info

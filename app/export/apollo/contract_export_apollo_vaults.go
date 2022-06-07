@@ -46,7 +46,7 @@ type UserInfo struct {
 //   }
 //	}
 // }
-func ExportApolloVaultLPs(app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
+func ExportApolloVaultLPs(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 	app.Logger().Info("Exporting Apollo Vaults")
 	ctx := util.PrepCtx(app)
 	strats, err := getListOfStrategies(ctx, app.WasmKeeper)

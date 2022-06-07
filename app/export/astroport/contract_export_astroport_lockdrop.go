@@ -24,10 +24,7 @@ import (
 // APOLLO/UST - terra1n3gt4k3vth0uppk0urche6m3geu9eqcyujt88q
 // means we only need to care about UST/LUNA/bLUNA
 
-func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
-	bl.RegisterAddress(util.DenomLUNA, AddressAstroportLockdrop)
-	bl.RegisterAddress(util.DenomUST, AddressAstroportLockdrop)
-	bl.RegisterAddress(util.DenomAUST, AddressAstroportLockdrop)
+func ExportAstroportLockdrop(app *app.TerraApp, snapshot util.SnapshotBalanceAggregateMap) (map[string]map[string]map[string]sdk.Int, error) {
 
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
@@ -63,6 +60,7 @@ func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.Snapsho
 
 	// 2. get pools (and get astroport lp token addr then astroport pair) - key is terraswap lp address
 	var liquidityPools = make(map[string]poolInfo)
+	var lpLockedInGenerator = make(map[string]sdk.Int)
 	poolsPrefix := util.GeneratePrefix("LiquidityPools")
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), lockdrop, poolsPrefix, func(key, value []byte) bool {
 		var lpAddr = string(key)
@@ -73,25 +71,15 @@ func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.Snapsho
 
 		liquidityPools[lpAddr] = pi
 
+		var lpAmount sdk.Int
+		util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: AddressAstroportGenerator,
+			QueryMsg:        []byte(fmt.Sprintf("{ \"deposit\": { \"lp_token\": \"%s\", \"user\": \"%s\" } }", pi.MigrationInfo.AstroportLPToken, AddressAstroportLockdrop)),
+		}, &lpAmount)
+
+		lpLockedInGenerator[pi.MigrationInfo.AstroportLPToken] = lpAmount
 		return false
 	})
-
-	// 3. figure out astroport pair addr for each terraswap lp token.
-	// TerraswapLP => AstoportPair
-	var pairAddresses = make(map[string]string)
-	var minter struct {
-		Minter string `json:"minter"`
-	}
-	for terraswapLPAddr, pi := range liquidityPools {
-		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
-			ContractAddress: pi.MigrationInfo.AstroportLPToken,
-			QueryMsg:        []byte("{\"minter\": {}}"),
-		}, &minter); err != nil {
-			return nil, fmt.Errorf("failed to fetch minter: %v", err)
-		}
-
-		pairAddresses[terraswapLPAddr] = minter.Minter
-	}
 
 	// 4. Iterate over all lockdrop pos
 	prefix := util.GeneratePrefix("lockup_position")
@@ -99,55 +87,40 @@ func ExportAstroportLockdrop(app *app.TerraApp, bl util.Blacklist) (util.Snapsho
 		LPUnitsLocked          sdk.Int `json:"lp_units_locked"`
 		AstroportLPTransferred sdk.Int `json:"astroport_lp_transferred"`
 	}
-	var userRefunds = make(map[string][]refund)
+	var lpShareHoldings = make(map[string]map[string]sdk.Int)
+
 	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), lockdrop, prefix, func(key, value []byte) bool {
 		terraswapLPAddress := string(key[2:46])
 		userAddress := string(key[48:92])
 
 		util.MustUnmarshalTMJSON(value, &lockupInfo)
+		astroLp := liquidityPools[terraswapLPAddress].MigrationInfo.AstroportLPToken
 
-		pairPool := pm[pairAddresses[terraswapLPAddress]]
-		refundAssets := getShareInAssets(pairPool, lockupInfo.LPUnitsLocked, pairPool.TotalShare)
-
-		// create new slice if not initialized yet
-		if userRefunds[userAddress] == nil {
-			userRefunds[userAddress] = make([]refund, 0)
+		if lpShareHoldings[astroLp] == nil {
+			lpShareHoldings[astroLp] = make(map[string]sdk.Int)
+		}
+		if lpShareHoldings[astroLp][userAddress].IsNil() {
+			lpShareHoldings[astroLp][userAddress] = sdk.NewInt(0)
 		}
 
-		userRefunds[userAddress] = append(userRefunds[userAddress], refund{
-			asset0:  pickDenomOrContractAddress(pairPool.Assets[0].AssetInfo),
-			asset1:  pickDenomOrContractAddress(pairPool.Assets[1].AssetInfo),
-			refunds: refundAssets,
-		})
-
+		// If LP transferred is not nil, means the user has withdrawn all LPs after unlock
+		if !lockupInfo.LPUnitsLocked.IsNil() && lockupInfo.AstroportLPTransferred.IsNil() {
+			lpShareHoldings[astroLp][userAddress] = lpShareHoldings[astroLp][userAddress].Add(lockupInfo.LPUnitsLocked)
+		}
 		return false
 	})
 
-	// 5. add up all pos and derive final balance
-	var finalBalance = make(util.SnapshotBalanceAggregateMap)
-	for userAddr, refunds := range userRefunds {
-		userBalance := make([]util.SnapshotBalance, 0)
-
-		for _, ref := range refunds {
-			if asset0name, ok := coalesceToBalanceDenom(ref.asset0); ok {
-				userBalance = append(userBalance, util.SnapshotBalance{
-					Denom:   asset0name,
-					Balance: ref.refunds[0],
-				})
-			}
-
-			if asset1name, ok := coalesceToBalanceDenom(ref.asset1); ok {
-				userBalance = append(userBalance, util.SnapshotBalance{
-					Denom:   asset1name,
-					Balance: ref.refunds[1],
-				})
-			}
+	for lp, shares := range lpShareHoldings {
+		totalShares := util.Sum(shares)
+		for addr, share := range shares {
+			shares[addr] = share.Mul(lpLockedInGenerator[lp]).Quo(totalShares)
 		}
-
-		finalBalance[userAddr] = userBalance
 	}
 
-	return finalBalance, nil
+	lpContractHoldings := make(map[string]map[string]map[string]sdk.Int)
+	lpContractHoldings[AddressAstroportLockdrop] = lpShareHoldings
+
+	return lpContractHoldings, nil
 }
 
 func getShareInAssets(p pool, lpAmount sdk.Int, totalShare sdk.Int) [2]sdk.Int {

@@ -63,7 +63,7 @@ func ExportAllBondedLuna(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotB
 	return snapshot, nil
 }
 
-func ExportAllNativeBalances(app *terra.TerraApp) (util.SnapshotBalanceAggregateMap, error) {
+func ExportAllNativeBalances(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
 	snapshot := make(util.SnapshotBalanceAggregateMap)
 	c := 0

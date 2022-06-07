@@ -36,8 +36,8 @@ type BatchItem struct {
 			State struct {
 				AUstAmount sdk.Int `json:"collateral_anchor_ust_amount"`
 			} `json:"state"`
+			UstAmount sdk.Int `json:"uusd_value"`
 		} `json:"detailed_info"`
-		UstAmount sdk.Int `json:"uusd_value"`
 	} `json:"info"`
 }
 
@@ -86,7 +86,7 @@ func exportApertureVaults(app *terra.TerraApp, snapshotType util.Snapshot, bl ut
 		} else {
 			snapshot.AppendOrAddBalance(item.Holder, util.SnapshotBalance{
 				Denom:   util.DenomUST,
-				Balance: item.Info.UstAmount,
+				Balance: item.Info.DetailedInfo.UstAmount,
 			})
 			bl.RegisterAddress(util.DenomUST, item.Contract)
 		}
