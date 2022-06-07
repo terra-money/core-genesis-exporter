@@ -42,7 +42,7 @@ func main() {
 		panic(err)
 	}
 
-	output, err := json.Marshal(balance)
+	output, err := json.MarshalIndent(balance, "", "  ")
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +90,7 @@ func checkDiff(aB, bG Balances) (Balances, error) {
 				oldValue = sdk.NewInt(0)
 			}
 			diffValue := c.Amount.Sub(oldValue)
-			if !diffValue.IsZero() {
+			if !diffValue.IsZero() || diffValue.LT(sdk.NewInt(1000000)) {
 				coin := sdk.Coin{
 					Denom:  c.Denom,
 					Amount: c.Amount.Sub(oldValue),
@@ -98,7 +98,9 @@ func checkDiff(aB, bG Balances) (Balances, error) {
 				nB.Coins = append(nB.Coins, coin)
 			}
 		}
-		newBalance = append(newBalance, nB)
+		if len(nB.Coins) > 0 {
+			newBalance = append(newBalance, nB)
+		}
 	}
 	return newBalance, nil
 }
