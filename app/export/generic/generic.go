@@ -9,12 +9,13 @@ import (
 	"github.com/terra-money/core/app/export/util"
 )
 
-func ExportGenericContracts(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, bl util.Blacklist) (common.ContractsMap, error) {
+func ExportVestingContracts(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, common.ContractsMap, error) {
 	ctx := util.PrepCtx(app)
 	logger := app.Logger()
 
 	// iterate through all contracts...
 	contractsMap := make(common.ContractsMap)
+	snapshot := make(util.SnapshotBalanceAggregateMap)
 
 	logger.Info("Getting all contract info...")
 	common.IterateAllContracts(sdk.UnwrapSDKContext(ctx), app.WasmKeeper, contractsMap)
@@ -30,7 +31,7 @@ func ExportGenericContracts(app *terra.TerraApp, snapshot util.SnapshotBalanceAg
 			}
 		}
 	}
-	return contractsMap, nil
+	return snapshot, contractsMap, nil
 }
 
 func HandleContractBalances(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, contractsMap common.ContractsMap, bl util.Blacklist) error {

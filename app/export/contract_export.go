@@ -139,19 +139,15 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	bl.RegisterAddress(util.DenomLUNA, "terra1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3nln0mh")
 	bl.RegisterAddress(util.DenomLUNA, "terra1tygms3xhhs3yv487phx3dw4a95jn7t7l8l07dr")
 	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
-
-	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
-	snapshot.ApplyBlackList(bl)
-
-	util.SaveToFile(app, snapshot, "after-protocols")
-
-	// a global holder for all contracts and their contractInfo
-	// Export generics
-	contractMap, err := generic.ExportGenericContracts(app, snapshot, bl)
+	vestingSs, contractMap, err := generic.ExportVestingContracts(app, bl)
 	if err != nil {
 		panic(err)
 	}
+
+	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances, vestingSs)
 	snapshot.ApplyBlackList(bl)
+
+	util.SaveToFile(app, snapshot, "after-protocols")
 
 	// Export Liquid Staking
 	check(nexus.ResolveToBLuna(app, snapshot, bl))
@@ -171,15 +167,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 
 	generic.HandleContractBalances(app, snapshot, contractMap, bl)
 	util.SaveToFile(app, snapshot, "after-contracts")
-	finalSnapshot, contractSnapshot, err := native.SplitContractBalances(app, contractMap, snapshot)
-	if err != nil {
-		panic(err)
-	}
-	util.SaveToFile(app, finalSnapshot, "final-snapshot")
-	util.SaveToFile(app, contractSnapshot, "contract-snapshot")
 
 	if snapshotType == util.Snapshot(util.PostAttack) {
-		for _, sbs := range finalSnapshot {
+		for _, sbs := range snapshot {
 			for i, b := range sbs {
 				if b.Denom == util.DenomAUST {
 					sbs[i] = util.SnapshotBalance{
@@ -192,11 +182,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	}
 
 	// remove all contract holdings from snapshot, minus some whitelisted ones
-	util.RemoveContractBalances(finalSnapshot, contractMap)
+	util.RemoveContractBalances(snapshot, contractMap)
 
-	finalAudit(app, finalSnapshot, snapshotType)
+	finalAudit(app, snapshot, snapshotType)
 
-	return finalSnapshot.ExportToBalances()
+	return snapshot.ExportToBalances()
 }
 
 func NewBlacklist() util.Blacklist {
