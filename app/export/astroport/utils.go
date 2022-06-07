@@ -71,6 +71,8 @@ func coalesceToBalanceDenom(assetName string) (string, bool) {
 		return util.DenomUST, true
 	case "uluna":
 		return util.DenomLUNA, true
+	case AddressAUST:
+		return util.DenomAUST, true
 	case AddressBLUNA:
 		return util.DenomBLUNA, true
 	case AddressSTLUNA:
