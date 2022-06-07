@@ -89,11 +89,14 @@ func checkDiff(aB, bG Balances) (Balances, error) {
 			if oldValue.IsNil() {
 				oldValue = sdk.NewInt(0)
 			}
-			coin := sdk.Coin{
-				Denom:  c.Denom,
-				Amount: c.Amount.Sub(oldValue),
+			diffValue := c.Amount.Sub(oldValue)
+			if !diffValue.IsZero() {
+				coin := sdk.Coin{
+					Denom:  c.Denom,
+					Amount: c.Amount.Sub(oldValue),
+				}
+				nB.Coins = append(nB.Coins, coin)
 			}
-			nB.Coins = append(nB.Coins, coin)
 		}
 		newBalance = append(newBalance, nB)
 	}
