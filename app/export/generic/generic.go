@@ -34,12 +34,12 @@ func ExportVestingContracts(app *terra.TerraApp, bl util.Blacklist) (util.Snapsh
 	return snapshot, contractsMap, nil
 }
 
-func HandleContractBalances(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, contractsMap common.ContractsMap, bl util.Blacklist) error {
+func HandleContractBalances(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap, contractsMap common.ContractsMap, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	// handle cw3, function directly updates the snapshot
 	snapshot = util.MergeSnapshots(make(util.SnapshotBalanceAggregateMap), snapshot)
 	if err := cw3.ExportCW3(app, contractsMap, snapshot, bl); err != nil {
 		panic(err)
 	}
 	snapshot.ApplyBlackList(bl)
-	return nil
+	return snapshot, nil
 }
