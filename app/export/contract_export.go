@@ -136,6 +136,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	)
 
 	bondedLuna := checkWithSs(util.CachedSBA(native.ExportAllBondedLuna, "bonded-luna", app, bl))
+	bl.RegisterAddress(util.DenomLUNA, "terra1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3nln0mh")
+	bl.RegisterAddress(util.DenomLUNA, "terra1tygms3xhhs3yv487phx3dw4a95jn7t7l8l07dr")
 	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
 
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances)
