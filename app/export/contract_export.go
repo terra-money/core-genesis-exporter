@@ -167,6 +167,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(stader.ResolveToLuna(app, snapshot))
 	util.SaveToFile(app, snapshot, "after-stader")
 
+	generic.HandleContractBalances(app, snapshot, contractMap, bl)
+	util.SaveToFile(app, snapshot, "after-contracts")
 	finalSnapshot, contractSnapshot, err := native.SplitContractBalances(app, contractMap, snapshot)
 	if err != nil {
 		panic(err)
