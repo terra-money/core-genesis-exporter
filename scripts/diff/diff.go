@@ -90,7 +90,7 @@ func checkDiff(aB, bG Balances) (Balances, error) {
 				oldValue = sdk.NewInt(0)
 			}
 			diffValue := c.Amount.Sub(oldValue)
-			if !diffValue.IsZero() && diffValue.LT(sdk.NewInt(1000000)) {
+			if !diffValue.IsZero() && diffValue.GT(sdk.NewInt(1000000)) {
 				coin := sdk.Coin{
 					Denom:  c.Denom,
 					Amount: c.Amount.Sub(oldValue),
