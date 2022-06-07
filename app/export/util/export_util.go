@@ -359,7 +359,7 @@ func AssertNativeSupply(ctx context.Context, b bankkeeper.Keeper, denom string, 
 }
 
 func SaveDataToFile(file string, data interface{}) error {
-	out, err := json.Marshal(data)
+	out, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
@@ -387,7 +387,7 @@ func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[stri
 	if err != nil {
 		return nil, err
 	}
-	out, err := json.Marshal(snapshot)
+	out, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +415,7 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	if err != nil {
 		return nil, err
 	}
-	out, err := json.Marshal(snapshot)
+	out, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -451,7 +451,7 @@ func CachedMap3(f func(*terra.TerraApp, SnapshotBalanceAggregateMap) (map[string
 	if err != nil {
 		return nil, err
 	}
-	out, err := json.Marshal(lpHolding)
+	out, err := json.MarshalIndent(lpHolding, "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -459,7 +459,7 @@ func CachedMap3(f func(*terra.TerraApp, SnapshotBalanceAggregateMap) (map[string
 	if err != nil {
 		return nil, err
 	}
-	ssOut, err := json.Marshal(snapshot)
+	ssOut, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return nil, err
 	}
@@ -474,7 +474,7 @@ func SaveToFile(app *terra.TerraApp, snapshot SnapshotBalanceAggregateMap, filen
 	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
 	_ = os.Mkdir(folder, 0777)
 	path := fmt.Sprintf("%s/%s", folder, filename)
-	out, err := json.Marshal(snapshot)
+	out, err := json.MarshalIndent(snapshot, "", "  ")
 	if err != nil {
 		return err
 	}
