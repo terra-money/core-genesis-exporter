@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -33,6 +34,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Printf("lengths - a: %d, b: %d\n", len(aGenesis.AppState.Bank.Balances), len(bGenesis.AppState.Bank.Balances))
 
 	balance, err := checkDiff(aGenesis.AppState.Bank.Balances, bGenesis.AppState.Bank.Balances)
 	if err != nil {
