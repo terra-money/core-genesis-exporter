@@ -92,7 +92,8 @@ func ExportCW3(app *terra.TerraApp, contractsMap common.ContractsMap, snapshot u
 			if !balances[sbs.Denom].IsNil() {
 				remaining := sbs.Balance.Sub(balances[sbs.Denom])
 				if remaining.IsNegative() {
-					panic(fmt.Errorf("negative balance %s, %s, %s", addr, sbs.Denom, remaining))
+					// panic(fmt.Errorf("negative balance %s, %s, %s", addr, sbs.Denom, remaining))
+					app.Logger().Info(fmt.Sprintf("negative balance %s, %s, %s", addr, sbs.Denom, remaining))
 				}
 
 				snapshot[addr][i] = util.SnapshotBalance{
