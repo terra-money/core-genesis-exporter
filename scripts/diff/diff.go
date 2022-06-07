@@ -95,6 +95,7 @@ func checkDiff(aB, bG Balances) (Balances, error) {
 			}
 			nB.Coins = append(nB.Coins, coin)
 		}
+		newBalance = append(newBalance, nB)
 	}
 	return newBalance, nil
 }
