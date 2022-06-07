@@ -50,6 +50,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	printBalanceSummary(balance)
 }
 
 func parseGenesis(path string) (Genesis, error) {
@@ -103,4 +105,17 @@ func checkDiff(aB, bG Balances) (Balances, error) {
 		}
 	}
 	return newBalance, nil
+}
+
+func printBalanceSummary(bals Balances) {
+	denomMap := make(map[string]sdk.Int)
+	for _, b := range bals {
+		for _, c := range b.Coins {
+			if denomMap[c.Denom].IsNil() {
+				denomMap[c.Denom] = sdk.NewInt(0)
+			}
+			denomMap[c.Denom] = denomMap[c.Denom].Add(c.Amount)
+		}
+	}
+	fmt.Printf("%v\n", denomMap)
 }
