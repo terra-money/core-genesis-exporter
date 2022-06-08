@@ -40,6 +40,25 @@ func ExportLunaX(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAg
 			Denom:   util.DenomLUNA,
 			Balance: exchangeRate.MulInt(balance).TruncateInt(),
 		})
+
+		// Fetch undelegation requests for this user.
+		undelegations, err := getUserUndelegations(ctx, q, LunaXState, address)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, undelegation := range undelegations {
+			if undelegation.Amount == nil {
+				continue
+			}
+
+			fmt.Println(undelegation)
+
+			snapshot.AppendOrAddBalance(address, util.SnapshotBalance{
+				Denom:   util.DenomLUNA,
+				Balance: exchangeRate.MulInt(*undelegation.Amount).TruncateInt(),
+			})
+		}
 	}
 
 	bl.RegisterAddress(util.DenomLUNA, LunaXState)

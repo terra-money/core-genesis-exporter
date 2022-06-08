@@ -16,9 +16,9 @@ const (
 )
 
 type UserUndelegationRequest struct {
-	BatchId int     `json:"batch_id"`
-	Shares  sdk.Dec `json:"shares"`
-	Amount  sdk.Int `json:"amount"`
+	BatchId int      `json:"batch_id"`
+	Shares  sdk.Dec  `json:"shares"`
+	Amount  *sdk.Int `json:"amount"`
 }
 
 func contains(s []string, str string) bool {
@@ -108,7 +108,7 @@ func ExportStakePlus(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalan
 				for _, undelegation := range undelegations {
 					snapshot.AppendOrAddBalance(userInfo.UserAddr, util.SnapshotBalance{
 						Denom:   util.DenomLUNA,
-						Balance: undelegation.Amount,
+						Balance: *undelegation.Amount,
 					})
 				}
 			}
