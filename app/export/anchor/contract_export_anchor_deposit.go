@@ -2,8 +2,11 @@ package anchor
 
 import (
 	"fmt"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/util"
+	"github.com/terra-money/core/x/wasm/types"
 )
 
 // ExportAnchorDeposit iterates over aUST and count aUST balance per address
@@ -29,4 +32,20 @@ func ExportAnchorDeposit(app *app.TerraApp, bl util.Blacklist) (util.SnapshotBal
 	}
 
 	return finalBalance, nil
+}
+
+func GetAUstExchangeRate(app *app.TerraApp) (sdk.Dec, error) {
+	ctx := util.PrepCtx(app)
+	q := util.PrepWasmQueryServer(app)
+	var state struct {
+		ExchangeRate sdk.Dec `json:"prev_exchange_rate"`
+	}
+	err := util.ContractQuery(ctx, q, &types.QueryContractStoreRequest{
+		ContractAddress: MoneyMarketContract,
+		QueryMsg:        []byte("{\"state\": {}}"),
+	}, &state)
+	if err != nil {
+		return sdk.Dec{}, err
+	}
+	return state.ExchangeRate, nil
 }
