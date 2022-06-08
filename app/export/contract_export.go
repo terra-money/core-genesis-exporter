@@ -11,6 +11,7 @@ import (
 	"github.com/terra-money/core/app/export/astroport"
 	"github.com/terra-money/core/app/export/edge"
 	"github.com/terra-money/core/app/export/generic"
+	"github.com/terra-money/core/app/export/glow"
 	"github.com/terra-money/core/app/export/ink"
 	"github.com/terra-money/core/app/export/kinetic"
 	"github.com/terra-money/core/app/export/kujira"
@@ -52,6 +53,11 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	bl := NewBlacklist()
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d - %s", app.LastBlockHeight(), snapshotType))
+
+	checkWithSs(util.CachedSBA(glow.ExportContract, "glow", app, bl))
+	if true {
+		panic("done")
+	}
 
 	// // Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
