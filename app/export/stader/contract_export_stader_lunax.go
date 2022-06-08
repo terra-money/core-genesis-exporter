@@ -15,6 +15,11 @@ var (
 	LunaXState = "terra1xacqx447msqp46qmv8k2sq6v5jh9fdj37az898"
 )
 
+type LunaXUndelegationRequest struct {
+	BatchId     int     `json:"batch_id"`
+	TokenAmount sdk.Int `json:"token_amount"`
+}
+
 // ExportLunaX get Luna balance for all accounts, multiply ER
 func ExportLunaX(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
 	ctx := util.PrepCtx(app)
@@ -36,27 +41,27 @@ func ExportLunaX(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAg
 
 	// balance * ER
 	for address, balance := range lunaxBalances {
-		snapshot[address] = append(snapshot[address], util.SnapshotBalance{
-			Denom:   util.DenomLUNA,
-			Balance: exchangeRate.MulInt(balance).TruncateInt(),
-		})
+		if !balance.IsZero() {
+			snapshot[address] = append(snapshot[address], util.SnapshotBalance{
+				Denom:   util.DenomLUNA,
+				Balance: exchangeRate.MulInt(balance).TruncateInt(),
+			})
+		}
 
 		// Fetch undelegation requests for this user.
-		undelegations, err := getUserUndelegations(ctx, q, LunaXState, address)
+		undelegations, err := GetLunaXUndelegations(ctx, q, LunaXState, address)
 		if err != nil {
 			return nil, err
 		}
 
 		for _, undelegation := range undelegations {
-			if undelegation.Amount == nil {
+			if undelegation.TokenAmount.IsZero() {
 				continue
 			}
 
-			fmt.Println(undelegation)
-
 			snapshot.AppendOrAddBalance(address, util.SnapshotBalance{
 				Denom:   util.DenomLUNA,
-				Balance: exchangeRate.MulInt(*undelegation.Amount).TruncateInt(),
+				Balance: exchangeRate.MulInt(undelegation.TokenAmount).TruncateInt(),
 			})
 		}
 	}
@@ -85,7 +90,6 @@ func GetLunaXExchangeRate(ctx context.Context, q wasmtypes.QueryServer) (sdk.Dec
 }
 
 func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
-
 	ctx := util.PrepCtx(app)
 	qs := util.PrepWasmQueryServer(app)
 
@@ -103,6 +107,53 @@ func ResolveToLuna(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMa
 				}
 			}
 		}
+	}
+
+	return nil
+}
+
+// GetLunaXUndelegations fetch all user undelegation requests.
+func GetLunaXUndelegations(ctx context.Context, q wasmtypes.QueryServer, contract string, userAddr string) ([]LunaXUndelegationRequest, error) {
+	undelegationRequests := []LunaXUndelegationRequest{}
+	var offset = -1
+	for {
+		query := fmt.Sprintf("{\"get_user_undelegation_records\":{\"limit\": 30,\"user_addr\":\"%s\"}}", userAddr)
+		if offset != -1 {
+			query = fmt.Sprintf("{\"get_user_undelegation_records\":{\"start_after\":%d,\"limit\": 30,\"user_addr\":\"%s\"}}", offset, userAddr)
+		}
+
+		var lunaXUndelegations []LunaXUndelegationRequest
+
+		if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: contract,
+			QueryMsg:        []byte(query),
+		}, &lunaXUndelegations); err != nil {
+			panic(err)
+		}
+
+		if len(lunaXUndelegations) == 0 {
+			break
+		}
+
+		undelegationRequests = append(undelegationRequests, lunaXUndelegations...)
+		offset = int(lunaXUndelegations[len(lunaXUndelegations)-1].BatchId)
+	}
+
+	return undelegationRequests, nil
+}
+
+func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error {
+	app.Logger().Info("Audit -- LunaX")
+	ctx := util.PrepCtx(app)
+
+	lunaBalance, err := util.GetNativeBalance(ctx, app.BankKeeper, util.DenomLUNA, LunaXState)
+	if err != nil {
+		return err
+	}
+
+	// TODO: Need to also query staked Luna.
+	if err := util.AlmostEqual(util.DenomLUNA, lunaBalance, snapshot.SumOfDenom(util.DenomLUNA), sdk.NewInt(1000000)); err != nil {
+		return err
 	}
 
 	return nil
