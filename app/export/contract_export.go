@@ -11,6 +11,7 @@ import (
 	"github.com/terra-money/core/app/export/astroport"
 	"github.com/terra-money/core/app/export/edge"
 	"github.com/terra-money/core/app/export/generic"
+	"github.com/terra-money/core/app/export/glow"
 	"github.com/terra-money/core/app/export/ink"
 	"github.com/terra-money/core/app/export/kinetic"
 	"github.com/terra-money/core/app/export/kujira"
@@ -116,6 +117,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	kineticSs := checkWithSs(util.CachedSBA(kinetic.ExportKinetic, "kinetic", app, bl))
 	steakSs := checkWithSs(util.CachedSBA(steak.ExportSteak, "steak", app, bl))
 	nexusSs, err := nexus.ExportNexus(app, astroportSnapshot, bl)
+	glowSs := checkWithSs(util.CachedSBA(glow.ExportContract, "glow", app, bl))
 	util.SaveToFile(app, nexusSs, "nexus")
 	check(err)
 
@@ -129,7 +131,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
 		steakSs, nexusSs, marsSs,
-		pylonSs,
+		pylonSs, glowSs,
 		// anchor
 		aUST,
 		bLunaInCustody,

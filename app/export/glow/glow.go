@@ -45,10 +45,10 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanc
 		if err != nil {
 			return err
 		}
+		allDeposits = append(allDeposits, deposits.Depositors...)
 		if len(deposits.Depositors) < limit {
 			return nil
 		}
-		allDeposits = append(allDeposits, deposits.Depositors...)
 		lastAddress := deposits.Depositors[len(deposits.Depositors)-1].Depositor
 		return depositorQuery(lastAddress)
 	}
