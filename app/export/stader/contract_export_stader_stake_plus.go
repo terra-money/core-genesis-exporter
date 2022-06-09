@@ -99,7 +99,7 @@ func ExportStakePlus(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalan
 				})
 
 				// Fetch undelegation requests for this user.
-				undelegations, err := getUserUndelegations(ctx, q, contract, userInfo.UserAddr)
+				undelegations, err := GetUserUndelegations(ctx, q, contract, userInfo.UserAddr)
 				if err != nil {
 					return nil, err
 				}
@@ -120,8 +120,8 @@ func ExportStakePlus(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalan
 	return snapshot, nil
 }
 
-// getUserUndelegations fetch all user undelegation requests.
-func getUserUndelegations(ctx context.Context, q wasmtypes.QueryServer, contract string, userAddr string) ([]UserUndelegationRequest, error) {
+// GetUserUndelegations fetch all user undelegation requests.
+func GetUserUndelegations(ctx context.Context, q wasmtypes.QueryServer, contract string, userAddr string) ([]UserUndelegationRequest, error) {
 	undelegationRequests := []UserUndelegationRequest{}
 	var offset = -1
 	for {
@@ -144,7 +144,6 @@ func getUserUndelegations(ctx context.Context, q wasmtypes.QueryServer, contract
 		}
 
 		undelegationRequests = append(undelegationRequests, stakePlusUndelegations...)
-
 		offset = int(stakePlusUndelegations[len(stakePlusUndelegations)-1].BatchId)
 	}
 
