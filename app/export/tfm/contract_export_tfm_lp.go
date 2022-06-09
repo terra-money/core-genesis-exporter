@@ -1,0 +1,234 @@
+package tfm
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"os"
+
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	terra "github.com/terra-money/core/app"
+	"github.com/terra-money/core/app/export/util"
+	wasmkeeper "github.com/terra-money/core/x/wasm/keeper"
+	wasmtypes "github.com/terra-money/core/x/wasm/types"
+)
+
+// ExportTfmLiquidity scan all factory contracts, look for pairs that have luna or ust
+func ExportTfmLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	app.Logger().Info("Exporting TFM pools")
+	ctx := util.PrepCtx(app)
+	qs := util.PrepWasmQueryServer(app)
+	keeper := app.WasmKeeper
+
+	// iterate over pairs,
+	var pools = make(poolMap)
+	var pairs = make(pairMap)
+	pairPrefix := util.GeneratePrefix("pair_info")
+	factory, _ := sdk.AccAddressFromBech32(AddressTfmFactory)
+
+	app.Logger().Info("... Retrieving all pools")
+	keeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), factory, pairPrefix, func(key, value []byte) bool {
+		var pool pool
+		var pair pair
+		util.MustUnmarshalTMJSON(value, &pair)
+		pairAddr := sdk.AccAddress(pair.ContractAddr).String()
+		if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: pairAddr,
+			QueryMsg:        []byte("{\"pool\":{}}"),
+		}, &pool); err != nil {
+			fmt.Printf("tfm: irregular pair, skipping: %s\n", err)
+			return false
+		}
+
+		// skip non-target pools
+		if pool.Assets[0].Amount.IsZero() || pool.Assets[1].Amount.IsZero() {
+			return false
+		}
+
+		pools[pairAddr] = pool
+		pairs[pairAddr] = pair
+
+		return false
+	})
+	app.Logger().Info(fmt.Sprintf("...... pool count: %d", len(pools)))
+
+	// for each LP token, get their token holdings
+	app.Logger().Info("... Getting LP holders")
+
+	var lpHoldersMap = make(map[string]util.BalanceMap) // lp => user => amount
+
+	// read from previous export
+	data, err := os.ReadFile("./tfm-lp.json")
+	if err == nil {
+		if err = json.Unmarshal(data, &lpHoldersMap); err != nil {
+			return nil, err
+		}
+	}
+
+	if len(lpHoldersMap) == 0 {
+		lpCount := 0
+		var info tokenInfo
+		for _, pairInfo := range pairs {
+			lpCount += 1
+			if lpCount%100 == 0 {
+				app.Logger().Info(fmt.Sprintf("...... processed %d", lpCount))
+			}
+			lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
+			if err != nil {
+				panic(err)
+			}
+			balanceMap := make(util.BalanceMap)
+
+			if err := util.ContractQuery(ctx, qs, &wasmtypes.QueryContractStoreRequest{
+				ContractAddress: lpAddr.String(),
+				QueryMsg:        []byte("{\"token_info\":{}}"),
+			}, &info); err != nil {
+				panic(fmt.Errorf("failed to query token info: %v", err))
+			}
+
+			// skip LP with no supply
+			if info.TotalSupply.IsZero() {
+				continue
+			}
+
+			if err := util.GetCW20AccountsAndBalances(ctx, keeper, lpAddr.String(), balanceMap); err != nil {
+				panic(fmt.Errorf("failed to iterate over LP token owners: %v", err))
+			}
+
+			lpHoldersMap[lpAddr.String()] = balanceMap
+		}
+	}
+
+	app.Logger().Info("... Resolving staking ownership")
+	stakingHoldings, err := getStakingHoldings(ctx, keeper)
+	if err != nil {
+		return nil, err
+	}
+
+	for lp, staking := range stakingHoldings {
+		if lpHolding, ok := lpHoldersMap[lp]; ok {
+			if amount, okk := lpHolding[staking.StakingAddr]; okk {
+				err := util.AlmostEqual(
+					fmt.Sprintf("tfm staking %s lp %s\n", staking.StakingAddr, lp),
+					amount,
+					util.Sum(staking.Holdings),
+					sdk.NewInt(1000000),
+				)
+				if err != nil {
+					staking.Holdings = normalizeStakingHoldings(staking.Holdings, amount)
+				}
+				delete(lpHolding, staking.StakingAddr)
+				lpHoldersMap[lp] = util.MergeMaps(lpHolding, staking.Holdings)
+				util.AssertCw20Supply(ctx, qs, lp, lpHoldersMap[lp])
+			}
+		}
+	}
+
+	var finalBalance = make(util.SnapshotBalanceAggregateMap)
+	// for each pair LP token, get their token holding, calculate their holdings per pair
+	for pairAddr, pairInfo := range pairs {
+		lpAddr, err := util.AccAddressFromBase64(pairInfo.LiquidityToken)
+		if err != nil {
+			panic(err)
+		}
+		pool := pools[pairAddr]
+
+		holderMap := lpHoldersMap[lpAddr.String()]
+		// iterate over LP holders, calculate how much is to be refunded
+		for userAddr, lpBalance := range holderMap {
+			refunds := getShareInAssets(pool, lpBalance, pool.TotalShare)
+			userBalance := make([]util.SnapshotBalance, 0)
+
+			if asset0name, ok := coalesceToBalanceDenom(pickDenomOrContractAddress(pool.Assets[0].AssetInfo)); ok {
+				if !refunds[0].IsZero() {
+					userBalance = append(userBalance, util.SnapshotBalance{
+						Denom:   asset0name,
+						Balance: refunds[0],
+					})
+				}
+			}
+
+			if asset1name, ok := coalesceToBalanceDenom(pickDenomOrContractAddress(pool.Assets[1].AssetInfo)); ok {
+				if !refunds[1].IsZero() {
+					userBalance = append(userBalance, util.SnapshotBalance{
+						Denom:   asset1name,
+						Balance: refunds[1],
+					})
+				}
+			}
+
+			// add to final balance if anything
+			if len(userBalance) != 0 {
+				finalBalance[userAddr] = append(finalBalance[userAddr], userBalance...)
+			}
+		}
+	}
+
+	return finalBalance, nil
+}
+
+type stakingInitMsg struct {
+	Token                string        `json:"token"`
+	LpToken              string        `json:"lp_token"`
+	StakingToken         string        `json:"staking_token"`
+	Pair                 string        `json:"pair"`
+	DistributionSchedule []interface{} `json:"distribution_schedule"`
+}
+
+type stakingHolders struct {
+	StakingAddr string
+	Holdings    util.BalanceMap
+}
+
+func normalizeStakingHoldings(vaultHolding util.BalanceMap, vaultTotal sdk.Int) util.BalanceMap {
+	shareTotal := util.Sum(vaultHolding)
+	normalizedHolding := make(util.BalanceMap)
+	for add, b := range vaultHolding {
+		normalizedHolding[add] = sdk.NewDecFromInt(b).MulInt(vaultTotal).QuoInt(shareTotal).TruncateInt()
+	}
+	return normalizedHolding
+}
+
+func getStakingHoldings(ctx context.Context, k wasmkeeper.Keeper) (map[string]stakingHolders, error) {
+	holdings := make(map[string]stakingHolders)
+	for _, staking := range StakingContracts {
+		stakingAddr := util.ToAddress(staking)
+		var initMsg stakingInitMsg
+		info, err := k.GetContractInfo(sdk.UnwrapSDKContext(ctx), stakingAddr)
+		if err != nil {
+			return nil, err
+		}
+		if err = json.Unmarshal(info.InitMsg, &initMsg); err != nil {
+			return nil, err
+		}
+		var lpAddress string
+		if initMsg.StakingToken != "" {
+			lpAddress = initMsg.StakingToken
+		} else if initMsg.LpToken != "" {
+			lpAddress = initMsg.LpToken
+		} else {
+			continue
+		}
+
+		prefix := util.GeneratePrefix("reward")
+		balances := make(map[string]sdk.Int)
+		k.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), stakingAddr, prefix, func(key, value []byte) bool {
+			var reward struct {
+				Amount              sdk.Int `json:"bond_amount"`
+				StakingTokenVersion int     `json:"staking_token_version"`
+			}
+			json.Unmarshal(value, &reward)
+			holderAddr := sdk.AccAddress(key)
+			// Handle staking contracts that have multiple staking tokens
+			if reward.StakingTokenVersion == 0 {
+				balances[holderAddr.String()] = reward.Amount
+			}
+			return false
+		})
+		holdings[lpAddress] = stakingHolders{
+			StakingAddr: staking,
+			Holdings:    balances,
+		}
+	}
+	return holdings, nil
+}
