@@ -145,6 +145,10 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanc
 		if err != nil {
 			return nil, err
 		}
+		aUstER, err := anchor.GetAUstExchangeRate(app)
+		if err != nil {
+			return nil, err
+		}
 
 		for address := range tokenBalances {
 			for _, individualPool := range PylonLookup[pool] {
@@ -160,7 +164,10 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanc
 				}
 
 				if !stakedBalance.Amount.IsZero() {
-					snapshot.AppendOrAddBalance(address, util.SnapshotBalance{Denom: util.DenomUST, Balance: stakedBalance.Amount})
+					snapshot.AppendOrAddBalance(address, util.SnapshotBalance{
+						Denom:   util.DenomAUST,
+						Balance: stakedBalance.Amount.ToDec().Quo(aUstER).TruncateInt(),
+					})
 				}
 			}
 		}
@@ -174,17 +181,10 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 
-	totalUst := sdk.NewInt(0)
+	totalAUst := sdk.NewInt(0)
 
-	// get aUST<>UST rate
-	var epochStateResponse struct {
-		ExchangeRate sdk.Dec `json:"exchange_rate"`
-	}
-
-	if err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
-		ContractAddress: anchor.MoneyMarketContract,
-		QueryMsg:        []byte(fmt.Sprintf("{\"epoch_state\":{\"block_height\":%d}}", app.LastBlockHeight())),
-	}, &epochStateResponse); err != nil {
+	aUstER, err := anchor.GetAUstExchangeRate(app)
+	if err != nil {
 		return err
 	}
 
@@ -194,10 +194,10 @@ func Audit(app *terra.TerraApp, snapshot util.SnapshotBalanceAggregateMap) error
 			return err
 		}
 
-		totalUst = totalUst.Add(config.UstAmount).Add(config.AUstAmount.ToDec().MulTruncate(epochStateResponse.ExchangeRate).TruncateInt())
+		totalAUst = totalAUst.Add(config.UstAmount.ToDec().QuoTruncate(aUstER).TruncateInt()).Add(config.AUstAmount)
 	}
 
-	if err := util.AlmostEqual(util.DenomUST, totalUst, snapshot.SumOfDenom(util.DenomUST), sdk.NewInt(100000000000)); err != nil {
+	if err := util.AlmostEqual(util.DenomUST, totalAUst, snapshot.SumOfDenom(util.DenomAUST), sdk.NewInt(100000000000)); err != nil {
 		return err
 	}
 

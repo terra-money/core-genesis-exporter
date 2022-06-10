@@ -38,11 +38,11 @@ func GetAUstExchangeRate(app *app.TerraApp) (sdk.Dec, error) {
 	ctx := util.PrepCtx(app)
 	q := util.PrepWasmQueryServer(app)
 	var state struct {
-		ExchangeRate sdk.Dec `json:"prev_exchange_rate"`
+		ExchangeRate sdk.Dec `json:"exchange_rate"`
 	}
 	err := util.ContractQuery(ctx, q, &types.QueryContractStoreRequest{
 		ContractAddress: MoneyMarketContract,
-		QueryMsg:        []byte("{\"state\": {}}"),
+		QueryMsg:        []byte("{\"epoch_state\": {}}"),
 	}, &state)
 	if err != nil {
 		return sdk.Dec{}, err
