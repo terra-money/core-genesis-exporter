@@ -56,6 +56,7 @@ func main() {
 		panic(err)
 	}
 	holders := mergeHolders(swapHolders, cdpHolders, balanceHolders)
+	delete(holders, "kava1mfru9azs5nua2wxcd4sq64g5nt7nn4n8s2w8cu")
 	fmt.Println("address,denom,amount")
 	for addr, holding := range holders {
 		for _, b := range holding {
