@@ -249,6 +249,13 @@ func exportCompounders(app *terra.TerraApp, snaphotType util.Snapshot, snapshot 
 	for k, v := range astroportLps {
 		finalMap[k] = v
 	}
+	kineticLps, err := util.CachedMap3(kinetic.ExportKineticLpHoldings, "kinetic-lockdrop-lps", app, snapshot)
+	if err != nil {
+		return nil, err
+	}
+	for k, v := range kineticLps {
+		finalMap[k] = v
+	}
 
 	return finalMap, nil
 }
