@@ -32,6 +32,7 @@ import (
 	"github.com/terra-money/core/app/export/suberra"
 	"github.com/terra-money/core/app/export/terrafloki"
 	"github.com/terra-money/core/app/export/terraswap"
+	"github.com/terra-money/core/app/export/tfm"
 	"github.com/terra-money/core/app/export/whitewhale"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
@@ -55,7 +56,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d - %s", app.LastBlockHeight(), snapshotType))
 
-	// // Export anchor
+	// Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
 	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "anchor-bluna", app, bl))
 
@@ -101,6 +102,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	staderPoolSs := checkWithSs(util.CachedSBA(stader.ExportPools, "stader-pools", app, bl))
 	staderStakeSs := checkWithSs(util.CachedSBA(stader.ExportStakePlus, "stader-stake-plus", app, bl))
 	staderVaultSs := checkWithSs(util.CachedSBA(stader.ExportVaults, "stader-vaults", app, bl))
+	tfmFarmsSs := checkWithSs(util.CachedSBA(tfm.ExportTfmFarms, "tfm-farm", app, bl))
+	tfmLpsSs := checkWithSs(util.CachedSBA(tfm.ExportTfmLiquidity, "tfm-lp", app, bl))
 	angelSs := checkWithSs(util.CachedSBA(angel.ExportEndowments, "angel", app, bl))
 	randomEarthSs := checkWithSs(util.CachedSBA(randomearth.ExportSettlements, "radomearth", app, bl))
 	starTerraSs := checkWithSs(util.CachedSBA(starterra.ExportIDO, "starterra", app, bl))
@@ -134,6 +137,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
 		steakSs, nexusSs, marsSs,
 		pylonSs, onePlanetSs, glowSs,
+    tfmFarmsSs, tfmLpsSs,
 		// anchor
 		aUST,
 		bLunaInCustody,
