@@ -396,7 +396,51 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	if err != nil {
 		return nil, err
 	}
+	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
+	err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
+	if err != nil {
+		return nil, err
+	}
+
 	return snapshot, nil
+}
+
+func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath string, protocol string) error {
+	totals := make(map[string]sdk.Int)
+
+	for _, snapshot := range aggregateMap {
+		for _, balance := range snapshot {
+			if totals[balance.Denom].IsNil() {
+				totals[balance.Denom] = balance.Balance
+			} else {
+				totals[balance.Denom] = totals[balance.Denom].Add(balance.Balance)
+			}
+		}
+	}
+
+	denoms := []SnapshotBalance{
+		{Denom: DenomUST, Balance: sdk.ZeroInt()},
+		{Denom: DenomAUST, Balance: sdk.ZeroInt()},
+		{Denom: DenomLUNA, Balance: sdk.ZeroInt()},
+		{Denom: DenomBLUNA, Balance: sdk.ZeroInt()},
+		{Denom: DenomCLUNA, Balance: sdk.ZeroInt()},
+		{Denom: DenomLUNAX, Balance: sdk.ZeroInt()},
+		{Denom: DenomNLUNA, Balance: sdk.ZeroInt()},
+		{Denom: DenomPLUNA, Balance: sdk.ZeroInt()},
+		{Denom: DenomSTEAK, Balance: sdk.ZeroInt()},
+		{Denom: DenomSTLUNA, Balance: sdk.ZeroInt()},
+	}
+
+	balances := []string{protocol}
+	for _, b := range denoms {
+		if !totals[b.Denom].IsNil() {
+			b.Balance = totals[b.Denom]
+		}
+		balances = append(balances, b.Balance.String())
+	}
+	line := fmt.Sprintf("%s\n", strings.Join(balances, ","))
+
+	return os.WriteFile(filePath, []byte(line), os.ModeAppend)
 }
 
 func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), filename string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
