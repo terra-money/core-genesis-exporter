@@ -413,7 +413,9 @@ func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath 
 			if totals[balance.Denom].IsNil() {
 				totals[balance.Denom] = balance.Balance
 			} else {
-				totals[balance.Denom] = totals[balance.Denom].Add(balance.Balance)
+				if !balance.Balance.IsNil() {
+					totals[balance.Denom] = totals[balance.Denom].Add(balance.Balance)
+				}
 			}
 		}
 	}
