@@ -397,6 +397,9 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 		return nil, err
 	}
 	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
+	if _, err := os.Stat(path); err != nil {
+		os.Create(summaryPath)
+	}
 	err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
 	if err != nil {
 		return nil, err
