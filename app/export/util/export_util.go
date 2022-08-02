@@ -397,9 +397,6 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 		return nil, err
 	}
 	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
-	if _, err := os.Stat(path); err != nil {
-		os.Create(summaryPath)
-	}
 	err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
 	if err != nil {
 		return nil, err
@@ -442,8 +439,13 @@ func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath 
 		balances = append(balances, b.Balance.String())
 	}
 	line := fmt.Sprintf("%s\n", strings.Join(balances, ","))
-
-	return os.WriteFile(filePath, []byte(line), os.ModeAppend)
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	_, err = file.WriteString(line)
+	return err
 }
 
 func CachedMap3(f func(*terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error), filename string, app *terra.TerraApp) (map[string]map[string]map[string]sdk.Int, error) {
