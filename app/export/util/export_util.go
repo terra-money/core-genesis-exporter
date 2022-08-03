@@ -412,7 +412,7 @@ func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[stri
 func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath string, protocol string) error {
 	totals := make(map[string]sdk.Int)
 	for addr, snapshot := range aggregateMap {
-		if SmartContractsAddresses[addr].Address == "" {
+		if SmartContractsAddresses[addr].Address != "" {
 			continue
 		}
 		for _, balance := range snapshot {
