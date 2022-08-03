@@ -47,6 +47,7 @@ var (
 )
 
 var contractToDenomMap map[string]string
+var SmartContractsAddresses map[string]wasmtypes.ContractInfo
 
 func init() {
 	contractToDenomMap = make(map[string]string)
@@ -375,11 +376,16 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
 	_ = os.Mkdir(folder, 0777)
 	path := fmt.Sprintf("%s/%s", folder, filename)
+	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
 	if _, err := os.Stat(path); err == nil {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			var snapshot SnapshotBalanceAggregateMap
 			if err = json.Unmarshal(data, &snapshot); err == nil {
+				err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
+				if err != nil {
+					return nil, err
+				}
 				return snapshot, nil
 			}
 		}
@@ -396,7 +402,6 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	if err != nil {
 		return nil, err
 	}
-	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
 	err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
 	if err != nil {
 		return nil, err
@@ -409,11 +414,16 @@ func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[stri
 	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
 	_ = os.Mkdir(folder, 0777)
 	path := fmt.Sprintf("%s/%s", folder, filename)
+	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
 	if _, err := os.Stat(path); err == nil {
 		data, err := os.ReadFile(path)
 		if err == nil {
 			var snapshot SnapshotBalanceAggregateMap
 			if err = json.Unmarshal(data, &snapshot); err == nil {
+				err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
+				if err != nil {
+					return nil, err
+				}
 				return snapshot, nil
 			}
 		}
@@ -430,7 +440,6 @@ func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[stri
 	if err != nil {
 		return nil, err
 	}
-	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
 	err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
 	if err != nil {
 		return nil, err
@@ -441,8 +450,11 @@ func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[stri
 
 func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath string, protocol string) error {
 	totals := make(map[string]sdk.Int)
-
-	for _, snapshot := range aggregateMap {
+	fmt.Printf("%d", len(SmartContractsAddresses))
+	for addr, snapshot := range aggregateMap {
+		if SmartContractsAddresses[addr].Address == "" {
+			continue
+		}
 		for _, balance := range snapshot {
 			if totals[balance.Denom].IsNil() {
 				totals[balance.Denom] = balance.Balance

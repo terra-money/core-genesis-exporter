@@ -59,6 +59,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	if err != nil {
 		panic(err)
 	}
+	util.SmartContractsAddresses = contractMap
 
 	// // Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
@@ -166,7 +167,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 			for i, b := range sbs {
 				if b.Denom == util.DenomAUST {
 					sbs[i] = util.SnapshotBalance{
-						Denom: util.DenomUST,
+						Denom:   util.DenomUST,
 						Balance: b.Balance,
 					}
 				}
