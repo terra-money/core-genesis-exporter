@@ -56,7 +56,14 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	logger := app.Logger()
 	logger.Info(fmt.Sprintf("Exporting Contracts @ %d - %s", app.LastBlockHeight(), snapshotType))
 
-	// Export anchor
+	// a global holder for all contracts and their contractInfo
+	vestingSs, contractMap, err := generic.ExportVestingContracts(app, bl)
+	if err != nil {
+		panic(err)
+	}
+	util.SmartContractsAddresses = contractMap
+
+	// // Export anchor
 	aUST := checkWithSs(util.CachedSBA(anchor.ExportAnchorDeposit, "anchor", app, bl))
 	bLunaInCustody := checkWithSs(util.CachedSBA(anchor.ExportbLUNA, "anchor-bluna", app, bl))
 
@@ -147,10 +154,6 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	bl.RegisterAddress(util.DenomLUNA, "terra1fl48vsnmsdzcv85q5d2q4z5ajdha8yu3nln0mh")
 	bl.RegisterAddress(util.DenomLUNA, "terra1tygms3xhhs3yv487phx3dw4a95jn7t7l8l07dr")
 	nativeBalances := checkWithSs(util.CachedSBA(native.ExportAllNativeBalances, "native-balance", app, bl))
-	vestingSs, contractMap, err := generic.ExportVestingContracts(app, bl)
-	if err != nil {
-		panic(err)
-	}
 
 	snapshot = util.MergeSnapshots(snapshot, bondedLuna, nativeBalances, vestingSs)
 	snapshot.ApplyBlackList(bl)
