@@ -452,7 +452,7 @@ func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath 
 	totals := make(map[string]sdk.Int)
 	fmt.Printf("%d", len(SmartContractsAddresses))
 	for addr, snapshot := range aggregateMap {
-		if SmartContractsAddresses[addr].Address == "" {
+		if SmartContractsAddresses[addr].Address != "" {
 			continue
 		}
 		for _, balance := range snapshot {
