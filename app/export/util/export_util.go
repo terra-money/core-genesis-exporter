@@ -405,6 +405,40 @@ func CachedSBA(f func(*terra.TerraApp, Blacklist) (SnapshotBalanceAggregateMap, 
 	return snapshot, nil
 }
 
+func CachedDex(f func(*terra.TerraApp, Blacklist, map[string]map[string]map[string]sdk.Int) (SnapshotBalanceAggregateMap, error), filename string, app *terra.TerraApp, bl Blacklist, lpMap map[string]map[string]map[string]sdk.Int) (SnapshotBalanceAggregateMap, error) {
+	folder := fmt.Sprintf("./cache-%d", app.LastBlockHeight())
+	_ = os.Mkdir(folder, 0777)
+	path := fmt.Sprintf("%s/%s", folder, filename)
+	if _, err := os.Stat(path); err == nil {
+		data, err := os.ReadFile(path)
+		if err == nil {
+			var snapshot SnapshotBalanceAggregateMap
+			if err = json.Unmarshal(data, &snapshot); err == nil {
+				return snapshot, nil
+			}
+		}
+	}
+	snapshot, err := f(app, bl, lpMap)
+	if err != nil {
+		return nil, err
+	}
+	out, err := json.MarshalIndent(snapshot, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	err = os.WriteFile(path, out, 0666)
+	if err != nil {
+		return nil, err
+	}
+	summaryPath := fmt.Sprintf("%s/summary.csv", folder)
+	err = SummarizeProtocolTotals(snapshot, summaryPath, filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return snapshot, nil
+}
+
 func SummarizeProtocolTotals(aggregateMap SnapshotBalanceAggregateMap, filePath string, protocol string) error {
 	totals := make(map[string]sdk.Int)
 

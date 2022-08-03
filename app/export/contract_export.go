@@ -73,8 +73,8 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(mirror.AuditCompounders(app, compoundedLps))
 
 	// Export DEXs
-	astroportSnapshot := checkWithSs(astroport.ExportAstroportLP(app, bl, compoundedLps))
-	terraswapSnapshot := checkWithSs(terraswap.ExportTerraswapLiquidity(app, bl, compoundedLps))
+	astroportSnapshot := checkWithSs(util.CachedDex(astroport.ExportAstroportLP, "astroport", app, bl, compoundedLps))
+	terraswapSnapshot := checkWithSs(util.CachedDex(terraswap.ExportTerraswapLiquidity, "terraswap", app, bl, compoundedLps))
 	loopSnapshot := checkWithSs(util.CachedSBA(loop.ExportLoopLP, "loop", app, bl))
 
 	// Export Vaults
