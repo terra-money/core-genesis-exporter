@@ -190,7 +190,7 @@ func getSpecFarmRewards(
 		for _, reward := range rewards.RewardInfo {
 			if farmAddr.String() == nLunaFarm {
 				snapshot.AppendOrAddBalance(walletAddress.String(), util.SnapshotBalance{
-					Denom:   util.AddressNLUNA,
+					Denom:   util.DenomNLUNA,
 					Balance: reward.LpAmount,
 				})
 			} else {

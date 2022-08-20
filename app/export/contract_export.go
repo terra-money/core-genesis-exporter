@@ -142,9 +142,9 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		staderStakeSs, staderVaultSs, angelSs,
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
-		steakSs, nexusSs, marsSs,
+		steakSs, nexusSs, marsSs, singleStakingSnapshot,
 		pylonSs, onePlanetSs, glowSs,
-    tfmFarmsSs, tfmLpsSs,
+		tfmFarmsSs, tfmLpsSs,
 		// anchor
 		aUST,
 		bLunaInCustody,
