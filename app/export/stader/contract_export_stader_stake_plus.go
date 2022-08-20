@@ -63,19 +63,19 @@ func ExportStakePlus(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalan
 			continue
 		}
 
-		var stakePlusUsers struct {
-			UserInfo []struct {
-				UserAddr    string  `json:"user_addr"`
-				TotalShares sdk.Dec `json:"total_shares"`
-				TotalAmount struct {
-					Denom  string  `json:"denom"`
-					Amount sdk.Int `json:"amount"`
-				} `json:"total_amount"`
-			} `json:"user_info"`
-		}
-
 		var offset = ""
 		for {
+
+			var stakePlusUsers struct {
+				UserInfo []struct {
+					UserAddr    string  `json:"user_addr"`
+					TotalShares sdk.Dec `json:"total_shares"`
+					TotalAmount struct {
+						Denom  string  `json:"denom"`
+						Amount sdk.Int `json:"amount"`
+					} `json:"total_amount"`
+				} `json:"user_info"`
+			}
 			query := "{\"get_all_users\": {\"limit\": 30}}"
 			if offset != "" {
 				query = fmt.Sprintf("{\"get_all_users\": {\"start_after\": \"%s\", \"limit\": 30}}", offset)
