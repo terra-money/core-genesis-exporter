@@ -121,8 +121,6 @@ func ExportKineticLpHoldings(app *terra.TerraApp, snapshot util.SnapshotBalanceA
 		return nil, err
 	}
 
-	fmt.Printf("kinitic LP total %s\n", balance.Balance)
-
 	totalShares := util.Sum(holders)
 
 	for addr, b := range holders {
