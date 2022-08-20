@@ -138,6 +138,34 @@ func ExportTerraswapLiquidity(app *terra.TerraApp, bl util.Blacklist, contractLp
 			}
 		}
 	}
+
+	app.Logger().Info("... Replace LP tokens with Mirror staking first")
+	vaultAddr := "terra17f7zu97865jmknk7p2glqvxzhduk78772ezac5"
+	vaultHoldings := contractLpHolders[vaultAddr]
+	for lpAddr, userHoldings := range vaultHoldings {
+		lpHolding, ok := lpHoldersMap[lpAddr]
+		if ok {
+			vaultAmount := lpHolding[vaultAddr]
+			if vaultAmount.IsNil() || vaultAmount.IsZero() {
+				continue
+			}
+			// app.Logger().Info(fmt.Sprintf("...... Resolving external vaults: %s lp %s", vaultAddr, lpAddr))
+			err := util.AlmostEqual("vault amount inconsistent", vaultAmount, util.Sum(userHoldings), sdk.NewInt(5000000))
+			if err != nil {
+				panic(err)
+			}
+			for addr, amount := range userHoldings {
+				if lpHolding[addr].IsNil() {
+					lpHolding[addr] = amount
+				} else {
+					lpHolding[addr] = lpHolding[addr].Add(amount)
+				}
+			}
+			delete(lpHolding, vaultAddr)
+			util.AssertCw20Supply(ctx, qs, lpAddr, lpHolding)
+		}
+	}
+
 	app.Logger().Info("... Replace LP tokens owned by other vaults")
 	for vaultAddr, vaultHoldings := range contractLpHolders {
 		for lpAddr, userHoldings := range vaultHoldings {
