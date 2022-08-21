@@ -64,8 +64,7 @@ func ExportNexus(app *terra.TerraApp, fromLP util.SnapshotBalanceAggregateMap, b
 
 	// merge holder maps + nLUNA holdings from LP
 	blacklist := bl.GetAddressesByDenomMap(util.DenomNLUNA)
-	nLunaHoldingsFromLP := fromLP.PickDenomIntoBalanceMap(util.DenomNLUNA)
-	mergednLunaHolderMap := util.MergeMaps(nLunaHolderMap, nLunaHolderMapFlat, nLunaHoldingsFromLP)
+	mergednLunaHolderMap := util.MergeMaps(nLunaHolderMap, nLunaHolderMapFlat)
 
 	nAssetTobAssetRatio, err := getnAssetTobAssetRatio(ctx, qs)
 	if err != nil {
