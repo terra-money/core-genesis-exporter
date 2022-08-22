@@ -8,6 +8,7 @@ import (
 	// stakingtypes "github.com/cosmos/cosmos-sdk/x/staking/types"
 	terra "github.com/terra-money/core/app"
 	"github.com/terra-money/core/app/export/anchor"
+	"github.com/terra-money/core/app/export/spectrum"
 	util "github.com/terra-money/core/app/export/util"
 
 	wasmtypes "github.com/terra-money/core/x/wasm/types"
@@ -21,8 +22,6 @@ var (
 		"terra149fxy4crxnhy4z2lezefwe7evjthlsttyse20m",
 		// TWD
 		"terra1he8j44cv2fcntujjnsqn3ummauua555agz4js0",
-		// PSI
-		"terra1xu84jh7x2ugt3gkpv8d450hdwcyejtcwwkkzgv",
 		// VKR
 		"terra1zxtcxxjqp7c46g8jx0t25s5ysa5qawmwd2w7nr",
 		// GP
@@ -46,6 +45,14 @@ var (
 		// Lunart
 		"terra1xkw8vusucy9c2w9hxuw6lktxk2w8g72utdyq96",
 	}
+
+	PSIAnchorPool = "terra1xu84jh7x2ugt3gkpv8d450hdwcyejtcwwkkzgv"
+	PSIPool       = "terra1fmnedmd3732gwyyj47r5p03055mygce98dpte2"
+	PsiSpecFarm   = "terra1kr82wxlvg773vjay95epyckna9g4vppjyfxgd0"
+	BPsiDpLp      = "terra1t4uuc09t4ld560vg2k9w2f5m9e5trftnym50zj"
+	BPsiDpPair    = "terra167gwjhv4mrs0fqj0q5tejyl6cz6qc2cl95z530"
+	BPsiDpToken   = "terra1zsaswh926ey8qa5x4vj93kzzlfnef0pstuca0y"
+	PsiDpToken    = "terra1rzj8fua8wmqq7x0ka8emr6t7n9j45u82pe6sgc"
 
 	// Contracts found on https://api.pylon.money/api/gateway/v1/projects/
 	PylonLookup = map[string][]string{
@@ -162,7 +169,6 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanc
 				if err != nil {
 					return snapshot, err
 				}
-
 				if !stakedBalance.Amount.IsZero() {
 					snapshot.AppendOrAddBalance(address, util.SnapshotBalance{
 						Denom:   util.DenomAUST,
@@ -172,7 +178,180 @@ func ExportContract(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanc
 			}
 		}
 	}
+	return snapshot, nil
+}
 
+func ExportPsiPool(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBalanceAggregateMap, error) {
+	q := util.PrepWasmQueryServer(app)
+	ctx := util.PrepCtx(app)
+	prefix := util.GeneratePrefix("reward")
+	// userLpHoldings := make(map[string]lpHoldings)
+	walletSeen := make(map[string]bool)
+	farmAddr, err := sdk.AccAddressFromBech32(PsiSpecFarm)
+	if err != nil {
+		return nil, err
+	}
+	aUstER, err := anchor.GetAUstExchangeRate(app)
+	if err != nil {
+		return nil, err
+	}
+	snapshot := make(util.SnapshotBalanceAggregateMap)
+	app.WasmKeeper.IterateContractStateWithPrefix(sdk.UnwrapSDKContext(ctx), farmAddr, prefix, func(key, value []byte) bool {
+		walletAddress := sdk.AccAddress(key[2:22])
+		if walletSeen[walletAddress.String()] {
+			return false
+		}
+		walletSeen[walletAddress.String()] = true
+		var rewards spectrum.RewardInfo
+		err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: farmAddr.String(),
+			QueryMsg:        []byte(fmt.Sprintf("{\"reward_info\":{\"staker_addr\":\"%s\"}}", walletAddress)),
+		}, &rewards)
+		if err != nil {
+			panic(err)
+		}
+		for _, reward := range rewards.RewardInfo {
+			amount := reward.LpAmount.ToDec().Quo(aUstER).TruncateInt()
+			if !amount.IsZero() {
+				snapshot.AppendOrAddBalance(walletAddress.String(), util.SnapshotBalance{
+					Denom:   util.DenomAUST,
+					Balance: amount,
+				})
+			}
+		}
+		return false
+	})
+
+	var pool struct {
+		Assets []struct {
+			TokenInfo struct {
+				Token struct {
+					ContractAddr string `json:"contract_addr"`
+				} `json:"token"`
+			} `json:"info"`
+			Amount sdk.Int `json:"amount"`
+		} `json:"assets"`
+		TotalShare sdk.Int `json:"total_share"`
+	}
+
+	err = util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: BPsiDpPair,
+		QueryMsg:        []byte("{\"pool\":{}}"),
+	}, &pool)
+	if err != nil {
+		return nil, err
+	}
+	if pool.Assets[0].TokenInfo.Token.ContractAddr != BPsiDpToken {
+		return nil, fmt.Errorf("unknown contract")
+	}
+	bPsiDpTotal := pool.Assets[0].Amount.ToDec()
+	lpBalances := make(map[string]sdk.Int)
+	lpTotal := pool.TotalShare.ToDec()
+	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, BPsiDpLp, lpBalances)
+	if err != nil {
+		return nil, err
+	}
+
+	for addr, balance := range lpBalances {
+		austBalance := balance.ToDec().Quo(lpTotal).Mul(bPsiDpTotal).Quo(aUstER).TruncateInt()
+		if !austBalance.IsZero() {
+			snapshot.AppendOrAddBalance(addr, util.SnapshotBalance{
+				Denom:   util.DenomAUST,
+				Balance: austBalance,
+			})
+		}
+	}
+
+	tokenHolders := []string{}
+	limit := 10
+	startAfter := ""
+	for {
+		var query string
+		if startAfter == "" {
+			query = fmt.Sprintf("{\"all_accounts\":{\"limit\": %d}}", limit)
+		} else {
+			query = fmt.Sprintf("{\"all_accounts\":{\"limit\": %d, \"start_after\": \"%s\"}}", limit, startAfter)
+		}
+		var allAccountResponse struct {
+			Accounts []string `json:"accounts"`
+		}
+		err = util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: BPsiDpToken,
+			QueryMsg:        []byte(query),
+		}, &allAccountResponse)
+		if err != nil {
+			return nil, err
+		}
+		tokenHolders = append(tokenHolders, allAccountResponse.Accounts...)
+		if limit > len(allAccountResponse.Accounts) {
+			break
+		}
+		startAfter = allAccountResponse.Accounts[len(allAccountResponse.Accounts)-1]
+	}
+
+	psiDpTokens := make(map[string]sdk.Int)
+	err = util.GetCW20AccountsAndBalances2(ctx, app.WasmKeeper, PsiDpToken, psiDpTokens)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, addr := range tokenHolders {
+		if psiDpTokens[addr].IsNil() {
+			// Set any amount here just to make sure we account for them later.
+			// Amount is not used for aUST calculation
+			psiDpTokens[addr] = sdk.NewInt(0)
+		}
+	}
+
+	for address := range psiDpTokens {
+		var stakedBalance struct {
+			Amount sdk.Int `json:"amount"`
+		}
+		err := util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+			ContractAddress: PSIPool,
+			QueryMsg:        []byte(fmt.Sprintf("{\"balance_of\":{\"owner\":\"%s\"}}", address)),
+		}, &stakedBalance)
+		if err != nil {
+			return snapshot, err
+		}
+		if !stakedBalance.Amount.IsZero() {
+			snapshot.AppendOrAddBalance(address, util.SnapshotBalance{
+				Denom:   util.DenomAUST,
+				Balance: stakedBalance.Amount.ToDec().Quo(aUstER).TruncateInt(),
+			})
+		}
+	}
+
+	cbl := util.Blacklist{}
+	cbl.RegisterAddress(util.DenomAUST, BPsiDpPair)
+	cbl.RegisterAddress(util.DenomAUST, PsiSpecFarm)
+	snapshot.ApplyBlackList(cbl)
+
+	var austInPool struct {
+		Balance sdk.Int `json:"balance"`
+	}
+
+	util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: util.AddressAUST,
+		QueryMsg:        []byte(fmt.Sprintf("{\"balance\": {\"address\": \"%s\"}}", PSIAnchorPool)),
+	}, &austInPool)
+
+	var rewards struct {
+		Amount sdk.Int `json:"amount"`
+		Fee    sdk.Int `json:"fee"`
+	}
+	err = util.ContractQuery(ctx, q, &wasmtypes.QueryContractStoreRequest{
+		ContractAddress: PSIAnchorPool,
+		QueryMsg:        []byte("{\"claimable_reward\":{}}"),
+	}, &rewards)
+	if err != nil {
+		return nil, err
+	}
+
+	// err = util.AlmostEqual("aUST in bPSIDp24m pool doesnt match", snapshot.SumOfDenom(util.DenomAUST), austInPool.Balance.Sub(rewards.Amount), sdk.NewInt(10000000))
+	if err != nil {
+		return nil, err
+	}
 	return snapshot, nil
 }
 

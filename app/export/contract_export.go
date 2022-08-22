@@ -117,6 +117,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 	check(starterra.Audit(app, starTerraSs))
 	starfletSs := checkWithSs(util.CachedSBA(starflet.ExportArbitrageAUST, "starflet", app, bl))
 	pylonSs := checkWithSs(util.CachedSBA(pylon.ExportContract, "pylon", app, bl))
+	pylonPsiSs := checkWithSs(util.CachedSBA(pylon.ExportPsiPool, "pylon-psi", app, bl))
 	marsSs := checkWithSs(util.CachedSBA(mars.ExportContract, "mars", app, bl))
 	check(mars.Audit(app, marsSs))
 
@@ -143,7 +144,7 @@ func ExportContracts(app *terra.TerraApp) []types.Balance {
 		randomEarthSs, starfletSs, flokiSs,
 		flokiRefundsSs, nebulaSs, aliceSs, kineticSs,
 		steakSs, nexusSs, marsSs, singleStakingSnapshot,
-		pylonSs, onePlanetSs, glowSs,
+		pylonSs, onePlanetSs, glowSs, pylonPsiSs,
 		tfmFarmsSs, tfmLpsSs,
 		// anchor
 		aUST,
