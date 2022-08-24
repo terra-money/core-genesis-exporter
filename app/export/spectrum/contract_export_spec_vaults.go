@@ -43,6 +43,8 @@ var (
 		"terra1y5hd5ea9dshfwf5eysqtsey7qkdhhktmtw9y3q",
 		//nLuna-Psi
 		"terra19kzel57gvx42e628k6frh624x5vm2kpck9cr9c",
+		//nLuna-Psi Astro
+		"terra1zl3ud44lja3r8ld8nwzh3eukl6h97gp2xr4wq6",
 		//ASTRO-UST
 		"terra1wn0d0zwl382pnl6hdcd8r926yx6mcqcag7v39j",
 		//bLUNA-LUNA
