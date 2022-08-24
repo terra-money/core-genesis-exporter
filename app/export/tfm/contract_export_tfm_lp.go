@@ -36,7 +36,7 @@ func ExportTfmLiquidity(app *terra.TerraApp, bl util.Blacklist) (util.SnapshotBa
 			ContractAddress: pairAddr,
 			QueryMsg:        []byte("{\"pool\":{}}"),
 		}, &pool); err != nil {
-			fmt.Printf("tfm: irregular pair, skipping: %s\n", err)
+			// fmt.Printf("tfm: irregular pair, skipping: %s\n", err)
 			return false
 		}
 
